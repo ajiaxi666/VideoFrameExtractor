@@ -46,7 +46,7 @@ from core.shot_detector import ShotDetector
 from core.video_exporter import VideoSegmentExporter, ffmpeg_executable, format_timecode
 from core.video_processor import VideoProcessor
 
-APP_VERSION = "0.3.8"
+APP_VERSION = "0.3.9"
 
 
 class ProcessingThread(QThread):
@@ -170,20 +170,23 @@ class MainWindow(QMainWindow):
         layout.setSpacing(10)
         layout.addWidget(self._build_top_bar())
 
-        splitter = QSplitter(Qt.Horizontal)
-        splitter.addWidget(self._build_controls())
-        splitter.addWidget(self._build_shot_panel())
-        splitter.addWidget(self._build_preview_panel())
-        splitter.setSizes([360, 430, 620])
-        splitter.setStretchFactor(0, 0)
-        splitter.setStretchFactor(1, 1)
-        splitter.setStretchFactor(2, 2)
-        layout.addWidget(splitter, 1)
+        self.main_splitter = QSplitter(Qt.Horizontal)
+        self.main_splitter.setHandleWidth(8)
+        self.main_splitter.addWidget(self._build_controls())
+        self.main_splitter.addWidget(self._build_shot_panel())
+        self.main_splitter.addWidget(self._build_preview_panel())
+        self.main_splitter.setSizes([380, 430, 610])
+        self.main_splitter.setStretchFactor(0, 0)
+        self.main_splitter.setStretchFactor(1, 1)
+        self.main_splitter.setStretchFactor(2, 2)
+        for index in range(3):
+            self.main_splitter.setCollapsible(index, False)
+        layout.addWidget(self.main_splitter, 1)
 
         self.setStyleSheet(
             """
             QMainWindow, QWidget {
-                background: #f3f5f8;
+                background: #eef2f7;
                 color: #172033;
                 font-family: "Microsoft YaHei", "Segoe UI", sans-serif;
                 font-size: 13px;
@@ -208,14 +211,14 @@ class MainWindow(QMainWindow):
                 font-weight: 700;
             }
             QLabel#summaryLabel {
-                color: #38465c;
-                background: #edf4ff;
-                border: 1px solid #cfe0ff;
+                color: #1f3658;
+                background: #eaf2ff;
+                border: 1px solid #c9dbff;
                 border-radius: 6px;
                 padding: 6px 8px;
             }
             QLabel#badgeLabel {
-                background: #e8efff;
+                background: #eaf2ff;
                 color: #1e3a8a;
                 border: 1px solid #c9d8ff;
                 border-radius: 10px;
@@ -228,22 +231,26 @@ class MainWindow(QMainWindow):
                 background: transparent;
             }
             QSplitter::handle {
-                background: #dce3ec;
+                background: #cfd8e6;
+                border-radius: 3px;
             }
             QSplitter::handle:horizontal {
-                width: 4px;
+                width: 8px;
                 margin: 4px 2px;
             }
             QSplitter::handle:vertical {
                 height: 4px;
                 margin: 2px 4px;
             }
+            QSplitter::handle:hover {
+                background: #7aa2f8;
+            }
             QGroupBox {
-                border: 1px solid #d9dee8;
+                border: 1px solid #d5dde8;
                 border-radius: 8px;
                 margin-top: 12px;
                 padding: 13px 10px 10px 10px;
-                font-weight: 600;
+                font-weight: 700;
                 background: #ffffff;
             }
             QGroupBox::title {
@@ -261,9 +268,9 @@ class MainWindow(QMainWindow):
                 color: #5e6b80;
             }
             QLabel#statusLabel {
-                color: #38465c;
-                background: #f8fafc;
-                border: 1px solid #e1e7f0;
+                color: #334155;
+                background: #f7fafc;
+                border: 1px solid #dfe7f1;
                 border-radius: 6px;
                 padding: 7px 8px;
             }
@@ -275,12 +282,13 @@ class MainWindow(QMainWindow):
                 padding: 12px;
             }
             QPushButton {
-                background: #2563eb;
+                background: #235ee8;
                 color: white;
                 border: 0;
                 border-radius: 6px;
                 padding: 7px 10px;
                 min-height: 22px;
+                font-weight: 600;
             }
             QPushButton:hover {
                 background: #1d4ed8;
@@ -294,16 +302,16 @@ class MainWindow(QMainWindow):
                 color: #f7f9fc;
             }
             QPushButton[secondary="true"] {
-                background: #f2f5f9;
+                background: #f6f8fb;
                 color: #1f2937;
-                border: 1px solid #d8dde7;
+                border: 1px solid #d5dde8;
             }
             QPushButton[secondary="true"]:hover {
-                background: #e6ecf4;
+                background: #e9eef6;
             }
             QToolButton {
-                background: #f2f5f9;
-                border: 1px solid #d8dde7;
+                background: #f6f8fb;
+                border: 1px solid #d5dde8;
                 border-radius: 6px;
                 padding: 6px;
                 min-width: 32px;
@@ -318,7 +326,7 @@ class MainWindow(QMainWindow):
             }
             QComboBox, QSpinBox, QDoubleSpinBox {
                 background: white;
-                border: 1px solid #cfd6e3;
+                border: 1px solid #cbd5e1;
                 border-radius: 6px;
                 padding: 4px 8px;
                 min-height: 24px;
@@ -328,7 +336,7 @@ class MainWindow(QMainWindow):
             }
             QListWidget {
                 background: #ffffff;
-                border: 1px solid #d8dde7;
+                border: 1px solid #d5dde8;
                 border-radius: 8px;
                 padding: 6px;
             }
@@ -347,7 +355,7 @@ class MainWindow(QMainWindow):
                 background: #eef4ff;
             }
             QProgressBar {
-                border: 1px solid #d8dde7;
+                border: 1px solid #d5dde8;
                 border-radius: 6px;
                 background: white;
                 text-align: center;
@@ -374,11 +382,28 @@ class MainWindow(QMainWindow):
                 border-radius: 8px;
             }
             QLabel#previewLabel {
-                background: #0f172a;
+                background: #111827;
                 border: 1px solid #263244;
                 border-radius: 8px;
                 color: #cbd5e1;
                 font-size: 14px;
+            }
+            QScrollBar:vertical {
+                background: transparent;
+                width: 10px;
+                margin: 2px;
+            }
+            QScrollBar::handle:vertical {
+                background: #c6d0df;
+                border-radius: 4px;
+                min-height: 28px;
+            }
+            QScrollBar::handle:vertical:hover {
+                background: #9fb0c6;
+            }
+            QScrollBar::add-line:vertical,
+            QScrollBar::sub-line:vertical {
+                height: 0;
             }
             """
         )
@@ -429,8 +454,8 @@ class MainWindow(QMainWindow):
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
         scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-        scroll.setMinimumWidth(360)
-        scroll.setMaximumWidth(360)
+        scroll.setMinimumWidth(300)
+        scroll.setMaximumWidth(540)
 
         panel = QWidget()
         panel.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Preferred)
