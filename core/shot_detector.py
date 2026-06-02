@@ -27,6 +27,7 @@ class ShotDetectionSettings:
     merge_similar_shots: bool = True
     merge_similarity_threshold: float = 0.08
     merge_max_shot_seconds: float = 1.0
+    guard_weak_motion_cuts: bool = True
     feature_cache_enabled: bool = True
     feature_cache_dir: Optional[str] = None
 
@@ -48,6 +49,7 @@ class ShotDetector:
         merge_similar_shots: bool = True,
         merge_similarity_threshold: float = 0.08,
         merge_max_shot_seconds: float = 1.0,
+        guard_weak_motion_cuts: bool = True,
         feature_cache_enabled: bool = True,
         feature_cache_dir: Optional[str] = None,
     ):
@@ -69,6 +71,7 @@ class ShotDetector:
             merge_similar_shots=merge_similar_shots,
             merge_similarity_threshold=merge_similarity_threshold,
             merge_max_shot_seconds=merge_max_shot_seconds,
+            guard_weak_motion_cuts=guard_weak_motion_cuts,
             feature_cache_enabled=feature_cache_enabled,
             feature_cache_dir=feature_cache_dir,
         )
@@ -153,7 +156,11 @@ class ShotDetector:
         progress_callback: Optional[Callable[[int], None]],
         feature_cache: FeatureCache,
     ) -> List[int]:
-        cuts: List[int] = []
+        cuts_by_source = {
+            "content": [],
+            "adaptive": [],
+            "histogram": [],
+        }
         pyscene_detectors = []
         if mode in {"content", "hybrid"}:
             pyscene_detectors.append(
@@ -190,7 +197,7 @@ class ShotDetector:
 
         for name, detector_cuts in pyscene_results.items():
             self.last_cut_candidates[name] = detector_cuts
-            cuts.extend(detector_cuts)
+            cuts_by_source[name] = detector_cuts
 
         if self.settings.histogram_enabled and mode in {"histogram", "hybrid"}:
             histogram_cuts = self._detect_histogram_from_scores(
@@ -198,7 +205,7 @@ class ShotDetector:
                 min_scene_len,
             )
             self.last_cut_candidates["histogram"] = histogram_cuts
-            cuts.extend(histogram_cuts)
+            cuts_by_source["histogram"] = histogram_cuts
 
         if self.settings.feature_cache_enabled:
             saved_path = feature_cache.save(
@@ -211,10 +218,19 @@ class ShotDetector:
             )
             self.feature_cache_path = str(saved_path) if saved_path else None
 
-        return cuts
+        return self._filter_cut_candidates(
+            cuts_by_source,
+            features["content_scores"],
+            features["histogram_scores"],
+            mode,
+        )
 
     def _cuts_from_features(self, features: dict, min_scene_len: int, mode: str) -> List[int]:
-        cuts: List[int] = []
+        cuts_by_source = {
+            "content": [],
+            "adaptive": [],
+            "histogram": [],
+        }
         content_scores = features["content_scores"]
         histogram_scores = features["histogram_scores"]
 
@@ -225,7 +241,7 @@ class ShotDetector:
                 min_scene_len,
             )
             self.last_cut_candidates["content"] = content_cuts
-            cuts.extend(content_cuts)
+            cuts_by_source["content"] = content_cuts
 
         if mode in {"adaptive", "hybrid"}:
             adaptive_cuts = self._detect_adaptive_from_scores(
@@ -234,7 +250,7 @@ class ShotDetector:
                 min_scene_len,
             )
             self.last_cut_candidates["adaptive"] = adaptive_cuts
-            cuts.extend(adaptive_cuts)
+            cuts_by_source["adaptive"] = adaptive_cuts
 
         if self.settings.histogram_enabled and mode in {"histogram", "hybrid"}:
             histogram_cuts = self._detect_histogram_from_scores(
@@ -242,9 +258,72 @@ class ShotDetector:
                 min_scene_len,
             )
             self.last_cut_candidates["histogram"] = histogram_cuts
-            cuts.extend(histogram_cuts)
+            cuts_by_source["histogram"] = histogram_cuts
 
-        return cuts
+        return self._filter_cut_candidates(
+            cuts_by_source,
+            content_scores,
+            histogram_scores,
+            mode,
+        )
+
+    def _filter_cut_candidates(
+        self,
+        cuts_by_source: dict,
+        content_scores,
+        histogram_scores,
+        mode: str,
+    ) -> List[int]:
+        cuts = sorted(
+            set(
+                int(cut)
+                for detector_cuts in cuts_by_source.values()
+                for cut in detector_cuts
+            )
+        )
+        if (
+            mode != "hybrid"
+            or not self.settings.guard_weak_motion_cuts
+            or not cuts
+        ):
+            return cuts
+
+        content_scores = np.asarray(content_scores, dtype=np.float32)
+        histogram_scores = np.asarray(histogram_scores, dtype=np.float32)
+        histogram_threshold = float(self.settings.histogram_threshold)
+        content_threshold = float(self.settings.content_threshold)
+        strong_content_threshold = content_threshold * 1.8
+        histogram_support_threshold = histogram_threshold * 0.55
+        tolerance = 2
+
+        filtered: List[int] = []
+        for cut in cuts:
+            content_score = self._score_at(content_scores, cut)
+            histogram_score = self._score_at(histogram_scores, cut)
+            sources = {
+                name
+                for name, detector_cuts in cuts_by_source.items()
+                if any(abs(int(source_cut) - cut) <= tolerance for source_cut in detector_cuts)
+            }
+
+            if "histogram" in sources:
+                filtered.append(cut)
+                continue
+            if histogram_score >= histogram_support_threshold:
+                filtered.append(cut)
+                continue
+            if content_score >= strong_content_threshold:
+                filtered.append(cut)
+                continue
+            if len(sources) >= 2 and content_score >= content_threshold * 1.25:
+                filtered.append(cut)
+
+        return filtered
+
+    def _score_at(self, scores, frame_idx: int) -> float:
+        if frame_idx < 0 or frame_idx >= len(scores):
+            return 0.0
+        return float(scores[frame_idx])
 
     def _probe_video(self, video_path: str) -> Tuple[int, float]:
         cap = cv2.VideoCapture(video_path)

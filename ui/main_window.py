@@ -46,7 +46,7 @@ from core.shot_detector import ShotDetector
 from core.video_exporter import VideoSegmentExporter, ffmpeg_executable, format_timecode
 from core.video_processor import VideoProcessor
 
-APP_VERSION = "0.3.6"
+APP_VERSION = "0.3.7"
 
 
 class ProcessingThread(QThread):
@@ -931,6 +931,7 @@ class MainWindow(QMainWindow):
             "merge_similar_shots": merge_strength > 0,
             "merge_similarity_threshold": self._merge_threshold_from_slider(merge_strength),
             "merge_max_shot_seconds": 1.0,
+            "guard_weak_motion_cuts": True,
             "feature_cache_enabled": True,
             "feature_cache_dir": str(self._feature_cache_dir()),
         }
