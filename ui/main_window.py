@@ -1,6 +1,8 @@
+import gc
 import hashlib
 import json
 import os
+import shutil
 import sys
 from datetime import datetime
 from pathlib import Path
@@ -37,12 +39,13 @@ from PyQt5.QtWidgets import (
 )
 
 from core.frame_selector import FrameSelector
+from core.feature_cache import feature_cache_path
 from core.image_saver import ImageSaver
 from core.shot_detector import ShotDetector
 from core.video_exporter import VideoSegmentExporter, ffmpeg_executable, format_timecode
 from core.video_processor import VideoProcessor
 
-APP_VERSION = "0.3.4"
+APP_VERSION = "0.3.5"
 
 
 class ProcessingThread(QThread):
@@ -88,6 +91,8 @@ class ProcessingThread(QThread):
                 "duration": probe.get_duration(),
                 "keyframe_count": sum(len(frames) for frames in selected_frames),
                 "similar_merge_count": detector.similar_merge_count,
+                "feature_cache_used": detector.used_feature_cache,
+                "feature_cache_path": detector.feature_cache_path,
                 "cut_sources": {
                     name: len(cuts)
                     for name, cuts in detector.last_cut_candidates.items()
@@ -152,6 +157,7 @@ class MainWindow(QMainWindow):
 
         self.init_ui()
         self._load_default_config()
+        self.update_cache_label()
         self._install_shortcuts()
 
     def init_ui(self):
@@ -323,6 +329,7 @@ class MainWindow(QMainWindow):
         panel_layout.addWidget(self._build_detection_group())
         panel_layout.addWidget(self._build_selection_group())
         panel_layout.addWidget(self._build_config_group())
+        panel_layout.addWidget(self._build_cache_group())
         panel_layout.addWidget(self._build_action_group())
         panel_layout.addWidget(self._build_export_group())
         panel_layout.addWidget(self._build_account_group())
@@ -504,6 +511,38 @@ class MainWindow(QMainWindow):
         second_row.addWidget(import_btn)
         second_row.addWidget(export_btn)
         layout.addLayout(second_row)
+        return group
+
+    def _build_cache_group(self) -> QGroupBox:
+        group = QGroupBox("缓存管理")
+        layout = QVBoxLayout(group)
+
+        self.cache_label = QLabel("缓存大小计算中")
+        self.cache_label.setObjectName("mutedLabel")
+        layout.addWidget(self.cache_label)
+
+        first_row = QHBoxLayout()
+        clear_current_btn = QPushButton("清当前视频缓存")
+        clear_current_btn.setProperty("secondary", "true")
+        clear_current_btn.clicked.connect(self.clear_current_video_cache)
+        clear_all_btn = QPushButton("清全部缓存")
+        clear_all_btn.setProperty("secondary", "true")
+        clear_all_btn.clicked.connect(self.clear_all_cache)
+        first_row.addWidget(clear_current_btn)
+        first_row.addWidget(clear_all_btn)
+        layout.addLayout(first_row)
+
+        second_row = QHBoxLayout()
+        open_cache_btn = QPushButton("打开缓存文件夹")
+        open_cache_btn.setProperty("secondary", "true")
+        open_cache_btn.clicked.connect(self.open_cache_folder)
+        clear_results_btn = QPushButton("清空当前结果")
+        clear_results_btn.setProperty("secondary", "true")
+        clear_results_btn.clicked.connect(self.clear_current_results)
+        second_row.addWidget(open_cache_btn)
+        second_row.addWidget(clear_results_btn)
+        layout.addLayout(second_row)
+
         return group
 
     def _build_action_group(self) -> QGroupBox:
@@ -806,6 +845,8 @@ class MainWindow(QMainWindow):
             "merge_similar_shots": merge_strength > 0,
             "merge_similarity_threshold": self._merge_threshold_from_slider(merge_strength),
             "merge_max_shot_seconds": 1.0,
+            "feature_cache_enabled": True,
+            "feature_cache_dir": str(self._feature_cache_dir()),
         }
 
     def _selection_settings(self) -> dict:
@@ -864,6 +905,97 @@ class MainWindow(QMainWindow):
 
     def _project_cache_dir(self) -> Path:
         return self._config_dir() / "projects"
+
+    def _feature_cache_dir(self) -> Path:
+        return self._config_dir() / "features"
+
+    def update_cache_label(self):
+        if not hasattr(self, "cache_label"):
+            return
+        total_size = self._directory_size(self._project_cache_dir()) + self._directory_size(
+            self._feature_cache_dir()
+        )
+        self.cache_label.setText(f"缓存占用：{self._format_bytes(total_size)}")
+
+    def _directory_size(self, path: Path) -> int:
+        if not path.exists():
+            return 0
+        total = 0
+        for item in path.rglob("*"):
+            if item.is_file():
+                try:
+                    total += item.stat().st_size
+                except OSError:
+                    pass
+        return total
+
+    def _format_bytes(self, size: int) -> str:
+        value = float(size)
+        for unit in ("B", "KB", "MB", "GB"):
+            if value < 1024.0:
+                return f"{value:.1f} {unit}" if unit != "B" else f"{int(value)} B"
+            value /= 1024.0
+        return f"{value:.1f} TB"
+
+    def clear_current_video_cache(self):
+        if not self.video_path:
+            self.status_label.setText("请先选择视频")
+            return
+        deleted = 0
+        try:
+            project_path = self._project_cache_path(self.video_path)
+            if project_path.exists():
+                project_path.unlink()
+                deleted += 1
+            feature_path = feature_cache_path(
+                str(self._feature_cache_dir()),
+                self.video_path,
+                320,
+            )
+            if feature_path.exists():
+                feature_path.unlink()
+                deleted += 1
+            self.update_cache_label()
+            self.status_label.setText(f"已清除当前视频缓存 {deleted} 个文件")
+        except Exception as exc:
+            QMessageBox.warning(self, "清除缓存失败", str(exc))
+
+    def clear_all_cache(self):
+        reply = QMessageBox.question(
+            self,
+            "清除全部缓存",
+            "确定清除全部检测缓存和特征缓存吗？不会删除参数设置和原视频。",
+            QMessageBox.Yes | QMessageBox.No,
+            QMessageBox.No,
+        )
+        if reply != QMessageBox.Yes:
+            return
+
+        try:
+            for path in (self._project_cache_dir(), self._feature_cache_dir()):
+                if path.exists():
+                    shutil.rmtree(path)
+                path.mkdir(parents=True, exist_ok=True)
+            self.update_cache_label()
+            self.status_label.setText("全部缓存已清除")
+        except Exception as exc:
+            QMessageBox.warning(self, "清除缓存失败", str(exc))
+
+    def open_cache_folder(self):
+        path = self._config_dir()
+        path.mkdir(parents=True, exist_ok=True)
+        try:
+            if os.name == "nt":
+                os.startfile(str(path))
+            else:
+                QMessageBox.information(self, "缓存文件夹", str(path))
+        except Exception as exc:
+            QMessageBox.warning(self, "打开缓存文件夹失败", str(exc))
+
+    def clear_current_results(self):
+        self._clear_results(keep_video=True)
+        gc.collect()
+        self.status_label.setText("当前检测结果已清空")
 
     def _video_signature(self, filepath: str) -> dict:
         path = Path(filepath)
@@ -1243,6 +1375,8 @@ class MainWindow(QMainWindow):
             self.status_label.setText(
                 f"处理完成。候选切点: {source_text} | 已合并相似镜头 {metrics['similar_merge_count']} 个"
             )
+        if metrics.get("feature_cache_used"):
+            self.status_label.setText(f"{self.status_label.text()} | 已使用特征缓存")
 
         first_frame = self._first_selected_frame()
         if first_frame is not None:
@@ -1253,6 +1387,7 @@ class MainWindow(QMainWindow):
         cache_path = self._save_project_cache()
         if cache_path:
             self.status_label.setText(f"{self.status_label.text()} | 检测结果已缓存")
+        self.update_cache_label()
 
     def on_processing_error(self, error_msg):
         self.process_btn.setEnabled(True)
@@ -1383,6 +1518,7 @@ class MainWindow(QMainWindow):
         self._populate_shot_list()
         self._populate_frame_grid()
         self._save_project_cache()
+        self.update_cache_label()
         self.status_label.setText(
             f"已更新镜头 {self.active_shot_idx + 1} 的关键帧为 {self.current_frame_idx}"
         )
