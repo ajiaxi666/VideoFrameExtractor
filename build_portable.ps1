@@ -36,12 +36,13 @@ New-Item -ItemType Directory -Path $PackageRoot | Out-Null
 Copy-Item -LiteralPath "dist\VideoFrameExtractor" -Destination (Join-Path $PackageRoot "VideoFrameExtractor") -Recurse
 Copy-Item -LiteralPath "README.md" -Destination $PackageRoot
 Copy-Item -LiteralPath "HANDOFF.md" -Destination $PackageRoot
+Copy-Item -LiteralPath "PRODUCT.md" -Destination $PackageRoot
 
 $ZipPath = Join-Path $Root "release\VideoFrameExtractor-portable.zip"
 if (Test-Path $ZipPath) {
     Remove-Item -LiteralPath $ZipPath -Force
 }
-Compress-Archive -Path (Join-Path $PackageRoot "VideoFrameExtractor"), (Join-Path $PackageRoot "README.md"), (Join-Path $PackageRoot "HANDOFF.md") -DestinationPath $ZipPath
+Compress-Archive -Path (Join-Path $PackageRoot "VideoFrameExtractor"), (Join-Path $PackageRoot "README.md"), (Join-Path $PackageRoot "HANDOFF.md"), (Join-Path $PackageRoot "PRODUCT.md") -DestinationPath $ZipPath
 
 $SourceStage = Join-Path $PackageRoot "VideoFrameExtractor-source"
 if (Test-Path $SourceStage) {
@@ -54,6 +55,7 @@ Copy-Item -LiteralPath "main.py" -Destination $SourceStage
 Copy-Item -LiteralPath "requirements.txt" -Destination $SourceStage
 Copy-Item -LiteralPath "README.md" -Destination $SourceStage
 Copy-Item -LiteralPath "HANDOFF.md" -Destination $SourceStage
+Copy-Item -LiteralPath "PRODUCT.md" -Destination $SourceStage
 Copy-Item -LiteralPath "setup_windows.cmd" -Destination $SourceStage
 Copy-Item -LiteralPath "run_app.cmd" -Destination $SourceStage
 Copy-Item -LiteralPath "build_portable.ps1" -Destination $SourceStage

@@ -22,6 +22,7 @@
 - 长视频优化：混合检测中的 Content/Adaptive 检测合并为单次解码，减少长片重复扫描。
 - 特征缓存：首次检测会保存每帧低分辨率特征，下次重新检测同一视频可直接复用特征，少做解码。
 - 缓存管理：支持清当前视频缓存、清全部缓存、打开缓存文件夹，以及清空当前结果释放缩略图占用。
+- 界面稳定性：状态栏里的长路径会自动省略并保留完整悬停提示，保存参数或导出后不会撑宽左侧面板。
 
 ## 安装
 
@@ -86,11 +87,13 @@ video-frame-extractor/
 ├── requirements.txt
 ├── README.md
 ├── HANDOFF.md
+├── PRODUCT.md
 ├── ui/
 │   ├── __init__.py
 │   └── main_window.py
 └── core/
     ├── __init__.py
+    ├── feature_cache.py
     ├── video_processor.py
     ├── shot_detector.py
     ├── frame_selector.py
