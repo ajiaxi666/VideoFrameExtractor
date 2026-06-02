@@ -46,7 +46,7 @@ from core.shot_detector import ShotDetector
 from core.video_exporter import VideoSegmentExporter, ffmpeg_executable, format_timecode
 from core.video_processor import VideoProcessor
 
-APP_VERSION = "0.3.7"
+APP_VERSION = "0.3.8"
 
 
 class ProcessingThread(QThread):
@@ -165,9 +165,10 @@ class MainWindow(QMainWindow):
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
 
-        layout = QHBoxLayout(central_widget)
+        layout = QVBoxLayout(central_widget)
         layout.setContentsMargins(12, 12, 12, 12)
         layout.setSpacing(10)
+        layout.addWidget(self._build_top_bar())
 
         splitter = QSplitter(Qt.Horizontal)
         splitter.addWidget(self._build_controls())
@@ -177,19 +178,65 @@ class MainWindow(QMainWindow):
         splitter.setStretchFactor(0, 0)
         splitter.setStretchFactor(1, 1)
         splitter.setStretchFactor(2, 2)
-        layout.addWidget(splitter)
+        layout.addWidget(splitter, 1)
 
         self.setStyleSheet(
             """
             QMainWindow, QWidget {
-                background: #f4f6f8;
+                background: #f3f5f8;
                 color: #172033;
                 font-family: "Microsoft YaHei", "Segoe UI", sans-serif;
                 font-size: 13px;
             }
+            QWidget#topBar {
+                background: #ffffff;
+                border: 1px solid #d9dee8;
+                border-radius: 8px;
+            }
+            QLabel#appTitleLabel {
+                font-size: 18px;
+                font-weight: 700;
+                color: #111827;
+            }
+            QLabel#contextLabel {
+                color: #5e6b80;
+                font-size: 12px;
+            }
+            QLabel#sectionTitleLabel {
+                color: #172033;
+                font-size: 15px;
+                font-weight: 700;
+            }
+            QLabel#summaryLabel {
+                color: #38465c;
+                background: #edf4ff;
+                border: 1px solid #cfe0ff;
+                border-radius: 6px;
+                padding: 6px 8px;
+            }
+            QLabel#badgeLabel {
+                background: #e8efff;
+                color: #1e3a8a;
+                border: 1px solid #c9d8ff;
+                border-radius: 10px;
+                padding: 2px 8px;
+                font-size: 12px;
+                font-weight: 600;
+            }
             QScrollArea {
                 border: 0;
                 background: transparent;
+            }
+            QSplitter::handle {
+                background: #dce3ec;
+            }
+            QSplitter::handle:horizontal {
+                width: 4px;
+                margin: 4px 2px;
+            }
+            QSplitter::handle:vertical {
+                height: 4px;
+                margin: 2px 4px;
             }
             QGroupBox {
                 border: 1px solid #d9dee8;
@@ -212,6 +259,20 @@ class MainWindow(QMainWindow):
             }
             QLabel#mutedLabel {
                 color: #5e6b80;
+            }
+            QLabel#statusLabel {
+                color: #38465c;
+                background: #f8fafc;
+                border: 1px solid #e1e7f0;
+                border-radius: 6px;
+                padding: 7px 8px;
+            }
+            QLabel#fileDropLabel {
+                color: #334155;
+                background: #f8fafc;
+                border: 1px dashed #b9c4d4;
+                border-radius: 8px;
+                padding: 12px;
             }
             QPushButton {
                 background: #2563eb;
@@ -251,6 +312,10 @@ class MainWindow(QMainWindow):
             QToolButton:hover {
                 background: #e6ecf4;
             }
+            QToolButton:disabled {
+                background: #eef2f7;
+                color: #9aa7bb;
+            }
             QComboBox, QSpinBox, QDoubleSpinBox {
                 background: white;
                 border: 1px solid #cfd6e3;
@@ -258,19 +323,28 @@ class MainWindow(QMainWindow):
                 padding: 4px 8px;
                 min-height: 24px;
             }
+            QComboBox:focus, QSpinBox:focus, QDoubleSpinBox:focus {
+                border: 1px solid #7aa2f8;
+            }
             QListWidget {
-                background: white;
+                background: #ffffff;
                 border: 1px solid #d8dde7;
                 border-radius: 8px;
                 padding: 6px;
+            }
+            QListWidget:focus {
+                border: 1px solid #93b4ff;
             }
             QListWidget::item {
                 border-radius: 6px;
                 padding: 6px;
             }
             QListWidget::item:selected {
-                background: #dbeafe;
+                background: #dce9ff;
                 color: #0f172a;
+            }
+            QListWidget::item:hover {
+                background: #eef4ff;
             }
             QProgressBar {
                 border: 1px solid #d8dde7;
@@ -300,12 +374,40 @@ class MainWindow(QMainWindow):
                 border-radius: 8px;
             }
             QLabel#previewLabel {
-                background: #111827;
+                background: #0f172a;
                 border: 1px solid #263244;
                 border-radius: 8px;
+                color: #cbd5e1;
+                font-size: 14px;
             }
             """
         )
+
+    def _build_top_bar(self) -> QWidget:
+        bar = QWidget()
+        bar.setObjectName("topBar")
+        bar.setFixedHeight(50)
+        bar.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        layout = QHBoxLayout(bar)
+        layout.setContentsMargins(14, 9, 14, 9)
+        layout.setSpacing(12)
+
+        title = QLabel("VideoFrameExtractor")
+        title.setObjectName("appTitleLabel")
+        self.top_context_label = QLabel("未选择视频")
+        self.top_context_label.setObjectName("contextLabel")
+        self.top_context_label.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Preferred)
+
+        version_label = QLabel(f"v{APP_VERSION}")
+        version_label.setObjectName("badgeLabel")
+        mode_label = QLabel("本地模式")
+        mode_label.setObjectName("badgeLabel")
+
+        layout.addWidget(title)
+        layout.addWidget(self.top_context_label, 1)
+        layout.addWidget(version_label)
+        layout.addWidget(mode_label)
+        return bar
 
     def _install_shortcuts(self):
         shortcuts = [
@@ -336,24 +438,13 @@ class MainWindow(QMainWindow):
         panel_layout.setContentsMargins(4, 4, 8, 4)
         panel_layout.setSpacing(8)
 
-        title = QLabel("镜头检测工作台")
-        title.setObjectName("titleLabel")
-        title.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Preferred)
-        subtitle = QLabel("更敏感地识别切换，并导出高质量关键帧")
-        subtitle.setObjectName("mutedLabel")
-        subtitle.setWordWrap(True)
-        subtitle.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Preferred)
-        panel_layout.addWidget(title)
-        panel_layout.addWidget(subtitle)
-
         panel_layout.addWidget(self._build_file_group())
         panel_layout.addWidget(self._build_detection_group())
         panel_layout.addWidget(self._build_selection_group())
-        panel_layout.addWidget(self._build_config_group())
-        panel_layout.addWidget(self._build_cache_group())
         panel_layout.addWidget(self._build_action_group())
         panel_layout.addWidget(self._build_export_group())
-        panel_layout.addWidget(self._build_account_group())
+        panel_layout.addWidget(self._build_cache_group())
+        panel_layout.addWidget(self._build_config_group())
         panel_layout.addStretch(1)
 
         scroll.setWidget(panel)
@@ -364,12 +455,14 @@ class MainWindow(QMainWindow):
         layout = QVBoxLayout(group)
         layout.setSpacing(8)
 
-        self.file_label = QLabel("未选择文件")
+        self.file_label = QLabel("未选择视频")
         self.file_label.setWordWrap(True)
-        self.file_label.setObjectName("mutedLabel")
+        self.file_label.setObjectName("fileDropLabel")
+        self.file_label.setAlignment(Qt.AlignCenter)
+        self.file_label.setMinimumHeight(52)
         self.file_label.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Preferred)
 
-        select_btn = QPushButton("选择视频")
+        select_btn = QPushButton("选择视频文件")
         select_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         select_btn.clicked.connect(self.select_video)
 
@@ -606,7 +699,7 @@ class MainWindow(QMainWindow):
         layout.addWidget(self.progress_bar)
 
         self.status_label = QLabel("准备就绪")
-        self.status_label.setObjectName("mutedLabel")
+        self.status_label.setObjectName("statusLabel")
         self.status_label.setWordWrap(True)
         self.status_label.setMinimumWidth(0)
         self.status_label.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Preferred)
@@ -648,8 +741,8 @@ class MainWindow(QMainWindow):
         video_row = QHBoxLayout()
         video_row.addWidget(QLabel("视频"))
         self.video_mode_combo = QComboBox()
-        self.video_mode_combo.addItem("精确切帧（高质量）", "precise")
-        self.video_mode_combo.addItem("快速原流优先", "copy")
+        self.video_mode_combo.addItem("精确切帧（重编码）", "precise")
+        self.video_mode_combo.addItem("原流快切（不重编码）", "copy")
         video_row.addWidget(self.video_mode_combo)
         layout.addLayout(video_row)
 
@@ -698,16 +791,27 @@ class MainWindow(QMainWindow):
         panel = QWidget()
         layout = QVBoxLayout(panel)
         layout.setContentsMargins(4, 0, 4, 0)
+        layout.setSpacing(8)
 
+        header = QWidget()
+        header_layout = QHBoxLayout(header)
+        header_layout.setContentsMargins(2, 0, 2, 0)
+        title = QLabel("检测结果")
+        title.setObjectName("sectionTitleLabel")
         self.summary_label = QLabel("还没有检测结果")
-        self.summary_label.setObjectName("mutedLabel")
-        layout.addWidget(self.summary_label)
+        self.summary_label.setObjectName("summaryLabel")
+        self.summary_label.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Preferred)
+        header_layout.addWidget(title)
+        header_layout.addStretch(1)
+        header_layout.addWidget(self.summary_label, 1)
+        layout.addWidget(header)
 
         shot_splitter = QSplitter(Qt.Vertical)
 
         shot_box = QGroupBox("镜头列表")
         shot_layout = QVBoxLayout(shot_box)
         self.shot_list = QListWidget()
+        self.shot_list.setAlternatingRowColors(True)
         self.shot_list.itemClicked.connect(self.on_shot_selected)
         shot_layout.addWidget(self.shot_list)
         shot_splitter.addWidget(shot_box)
@@ -733,9 +837,11 @@ class MainWindow(QMainWindow):
         panel = QWidget()
         layout = QVBoxLayout(panel)
         layout.setContentsMargins(4, 0, 4, 0)
+        layout.setSpacing(8)
 
         preview_box = QGroupBox("当前镜头预览与手动微调")
         preview_layout = QVBoxLayout(preview_box)
+        preview_layout.setSpacing(8)
 
         self.preview_label = QLabel("选择视频并开始检测")
         self.preview_label.setObjectName("previewLabel")
@@ -744,13 +850,16 @@ class MainWindow(QMainWindow):
         self.preview_label.setScaledContents(False)
         preview_layout.addWidget(self.preview_label, 1)
 
+        info_row = QHBoxLayout()
+        info_row.setSpacing(8)
         self.frame_info_label = QLabel("帧信息")
         self.frame_info_label.setObjectName("mutedLabel")
-        preview_layout.addWidget(self.frame_info_label)
-
         self.shot_range_label = QLabel("当前镜头范围")
         self.shot_range_label.setObjectName("mutedLabel")
-        preview_layout.addWidget(self.shot_range_label)
+        self.shot_range_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        info_row.addWidget(self.frame_info_label, 1)
+        info_row.addWidget(self.shot_range_label, 1)
+        preview_layout.addLayout(info_row)
 
         self.frame_slider = QSlider(Qt.Horizontal)
         self.frame_slider.setEnabled(False)
@@ -768,6 +877,7 @@ class MainWindow(QMainWindow):
         next_btn.setToolTip("下一帧（右方向键 / 数字键 6）")
         next_btn.clicked.connect(lambda: self.nudge_frame(1))
         replace_btn = QPushButton("设为当前关键帧")
+        replace_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         replace_btn.setToolTip("设为当前关键帧（数字键 5 / 回车）")
         replace_btn.clicked.connect(self.replace_active_keyframe)
         nav_layout.addWidget(previous_btn)
@@ -804,6 +914,8 @@ class MainWindow(QMainWindow):
 
         self.video_path = filepath
         self._set_compact_label(self.file_label, Path(filepath).name)
+        if hasattr(self, "top_context_label"):
+            self._set_compact_label(self.top_context_label, Path(filepath).name, 96)
         self._clear_results()
         self._load_video_info(filepath)
         self._try_load_project_cache()
@@ -892,9 +1004,20 @@ class MainWindow(QMainWindow):
                 f"{duration:.1f} 秒 | {probe.width}x{probe.height} | "
                 f"{probe.fps:.2f} fps | {probe.total_frames} 帧"
             )
+            if hasattr(self, "top_context_label"):
+                self._set_compact_label(
+                    self.top_context_label,
+                    (
+                        f"{Path(filepath).name} | {duration:.1f} 秒 | "
+                        f"{probe.width}x{probe.height} | {probe.fps:.2f} fps"
+                    ),
+                    120,
+                )
             self._set_status("视频已载入，可以开始检测")
         except Exception as exc:
             self._set_compact_label(self.video_meta_label, f"读取视频失败: {exc}")
+            if hasattr(self, "top_context_label"):
+                self._set_compact_label(self.top_context_label, "视频读取失败")
             self._set_status("视频读取失败")
 
     def process_video(self):
@@ -1194,6 +1317,12 @@ class MainWindow(QMainWindow):
                 if payload_video_path and Path(payload_video_path).exists():
                     self.video_path = payload_video_path
                     self._set_compact_label(self.file_label, Path(payload_video_path).name)
+                    if hasattr(self, "top_context_label"):
+                        self._set_compact_label(
+                            self.top_context_label,
+                            Path(payload_video_path).name,
+                            96,
+                        )
                     self._clear_results()
                     self._load_video_info(payload_video_path)
                 else:
