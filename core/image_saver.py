@@ -33,7 +33,25 @@ class ImageSaver:
         else:
             filename = f"frame_{frame_idx:06d}.{self.format}"
 
+        return self.save_named_frame(
+            frame,
+            filename,
+            frame_idx,
+            shot_idx=shot_idx,
+            keyframe_idx=keyframe_idx,
+        )
+
+    def save_named_frame(
+        self,
+        frame,
+        filename: str,
+        frame_idx: int,
+        shot_idx: Optional[int] = None,
+        keyframe_idx: Optional[int] = None,
+        role: Optional[str] = None,
+    ) -> str:
         filepath = os.path.join(self.output_dir, filename)
+        Path(filepath).parent.mkdir(parents=True, exist_ok=True)
 
         if self.format == "png":
             encode_params = [cv2.IMWRITE_PNG_COMPRESSION, 0]
@@ -55,6 +73,7 @@ class ImageSaver:
                 "frame_idx": frame_idx,
                 "shot_idx": shot_idx,
                 "keyframe_idx": keyframe_idx,
+                "role": role,
                 "filepath": filepath,
             }
         )

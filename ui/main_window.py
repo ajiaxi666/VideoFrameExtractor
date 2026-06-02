@@ -37,9 +37,10 @@ from PyQt5.QtWidgets import (
 from core.frame_selector import FrameSelector
 from core.image_saver import ImageSaver
 from core.shot_detector import ShotDetector
+from core.video_exporter import VideoSegmentExporter, ffmpeg_executable, format_timecode
 from core.video_processor import VideoProcessor
 
-APP_VERSION = "0.3.2"
+APP_VERSION = "0.3.3"
 
 
 class ProcessingThread(QThread):
@@ -98,6 +99,34 @@ class ProcessingThread(QThread):
             self.error.emit(str(exc))
 
 
+class VideoExportThread(QThread):
+    """Export shot videos away from the UI thread."""
+
+    progress = pyqtSignal(int)
+    finished = pyqtSignal(dict)
+    error = pyqtSignal(str)
+
+    def __init__(self, video_path: str, shots: list, output_dir: str, mode: str):
+        super().__init__()
+        self.video_path = video_path
+        self.shots = shots
+        self.output_dir = output_dir
+        self.mode = mode
+
+    def run(self):
+        try:
+            exporter = VideoSegmentExporter(self.video_path, self.output_dir)
+            metadata = exporter.export_segments(
+                self.shots,
+                mode=self.mode,
+                progress_callback=lambda p: self.progress.emit(p),
+            )
+            self.progress.emit(100)
+            self.finished.emit(metadata)
+        except Exception as exc:
+            self.error.emit(str(exc))
+
+
 class MainWindow(QMainWindow):
     """Main application window."""
 
@@ -114,6 +143,7 @@ class MainWindow(QMainWindow):
         self.active_keyframe_idx = None
         self.current_frame_idx = None
         self.thread = None
+        self.export_thread = None
         self.shortcuts = []
 
         self.init_ui()
@@ -437,7 +467,12 @@ class MainWindow(QMainWindow):
         self.edge_margin_spin.setSuffix(" %")
         self.edge_margin_spin.setValue(8.0)
 
+        self.edge_frame_offset_spin = QSpinBox()
+        self.edge_frame_offset_spin.setRange(0, 12)
+        self.edge_frame_offset_spin.setValue(1)
+
         form.addRow("每镜头帧数", self.frames_per_shot_spin)
+        form.addRow("首尾避让帧数", self.edge_frame_offset_spin)
         return group
 
     def _build_config_group(self) -> QGroupBox:
@@ -500,6 +535,29 @@ class MainWindow(QMainWindow):
         export_btn = QPushButton("导出数据集")
         export_btn.clicked.connect(self.export_dataset)
         layout.addWidget(export_btn)
+
+        edge_row = QHBoxLayout()
+        self.export_current_edges_btn = QPushButton("导出当前首尾帧")
+        self.export_current_edges_btn.setProperty("secondary", "true")
+        self.export_current_edges_btn.clicked.connect(self.export_current_edge_frames)
+        self.export_all_edges_btn = QPushButton("批量导出首尾帧")
+        self.export_all_edges_btn.setProperty("secondary", "true")
+        self.export_all_edges_btn.clicked.connect(self.export_all_edge_frames)
+        edge_row.addWidget(self.export_current_edges_btn)
+        edge_row.addWidget(self.export_all_edges_btn)
+        layout.addLayout(edge_row)
+
+        video_row = QHBoxLayout()
+        video_row.addWidget(QLabel("视频"))
+        self.video_mode_combo = QComboBox()
+        self.video_mode_combo.addItem("精确切帧（高质量）", "precise")
+        self.video_mode_combo.addItem("快速原流优先", "copy")
+        video_row.addWidget(self.video_mode_combo)
+        layout.addLayout(video_row)
+
+        self.export_segments_btn = QPushButton("导出分镜视频")
+        self.export_segments_btn.clicked.connect(self.export_shot_videos)
+        layout.addWidget(self.export_segments_btn)
         return group
 
     def _build_account_group(self) -> QGroupBox:
@@ -748,7 +806,9 @@ class MainWindow(QMainWindow):
                 "frames_per_shot": self.frames_per_shot_spin.value(),
                 "max_samples_per_shot": self.max_samples_spin.value(),
                 "edge_margin_ratio": self.edge_margin_spin.value() / 100.0,
+                "edge_frame_offset": self.edge_frame_offset_spin.value(),
                 "format": self.format_combo.currentData(),
+                "video_export_mode": self.video_mode_combo.currentData(),
                 "detection": self._detection_settings(),
                 "selection": self._selection_settings(),
             },
@@ -795,12 +855,20 @@ class MainWindow(QMainWindow):
             self.max_samples_spin.setValue(int(settings["max_samples_per_shot"]))
         if "edge_margin_ratio" in settings:
             self.edge_margin_spin.setValue(float(settings["edge_margin_ratio"]) * 100.0)
+        if "edge_frame_offset" in settings:
+            self.edge_frame_offset_spin.setValue(int(settings["edge_frame_offset"]))
 
         fmt = settings.get("format")
         if fmt is not None:
             fmt_index = self.format_combo.findData(fmt)
             if fmt_index >= 0:
                 self.format_combo.setCurrentIndex(fmt_index)
+
+        video_mode = settings.get("video_export_mode")
+        if video_mode is not None:
+            video_mode_index = self.video_mode_combo.findData(video_mode)
+            if video_mode_index >= 0:
+                self.video_mode_combo.setCurrentIndex(video_mode_index)
 
     def _load_default_config(self):
         path = self._default_config_path()
@@ -1101,11 +1169,11 @@ class MainWindow(QMainWindow):
         qt_image = QImage(resized.data, w, h, bytes_per_line, QImage.Format_RGB888).copy()
         return QPixmap.fromImage(qt_image)
 
-    def _make_export_dir(self, parent_dir: str) -> str:
+    def _make_export_dir(self, parent_dir: str, suffix: str = "keyframes") -> str:
         video_name = Path(self.video_path).stem if self.video_path else "video"
         safe_name = self._safe_folder_name(video_name)
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        base_dir = Path(parent_dir) / f"{safe_name}_keyframes_{timestamp}"
+        base_dir = Path(parent_dir) / f"{safe_name}_{suffix}_{timestamp}"
         candidate = base_dir
         counter = 2
         while candidate.exists():
@@ -1118,6 +1186,117 @@ class MainWindow(QMainWindow):
         cleaned = "".join("_" if char in invalid_chars else char for char in name)
         cleaned = cleaned.strip(" .")
         return cleaned or "video"
+
+    def _frame_timecode(self, frame_idx: int) -> str:
+        fps = float(self.video_info.get("fps") or 0)
+        seconds = frame_idx / fps if fps > 0 else 0
+        return format_timecode(seconds)
+
+    def _edge_frame_indices(self, start: int, end: int):
+        if end <= start:
+            return start, end
+        max_offset = max(0, (end - start - 1) // 2)
+        offset = min(self.edge_frame_offset_spin.value(), max_offset)
+        return start + offset, end - offset
+
+    def _edge_frame_filename(self, shot_idx: int, role: str, frame_idx: int, format_str: str) -> str:
+        timecode = self._frame_timecode(frame_idx)
+        return f"frames/shot_{shot_idx + 1:03d}_{role}_f{frame_idx:06d}_t{timecode}.{format_str}"
+
+    def _active_or_selected_shot_idx(self):
+        if self.active_shot_idx is not None and self.active_shot_idx < len(self.shots):
+            return self.active_shot_idx
+        item = self.shot_list.currentItem()
+        if item is not None:
+            shot_idx = item.data(Qt.UserRole)
+            if shot_idx is not None and shot_idx < len(self.shots):
+                return shot_idx
+        return None
+
+    def export_current_edge_frames(self):
+        shot_idx = self._active_or_selected_shot_idx()
+        if shot_idx is None:
+            self.status_label.setText("请先选择一个镜头")
+            return
+        self._export_edge_frames([shot_idx], "current")
+
+    def export_all_edge_frames(self):
+        if not self.shots:
+            self.status_label.setText("请先处理视频")
+            return
+        self._export_edge_frames(list(range(len(self.shots))), "all")
+
+    def _export_edge_frames(self, shot_indices, scope: str):
+        if not self.video_path or not self.shots:
+            self.status_label.setText("请先处理视频")
+            return
+
+        parent_dir = QFileDialog.getExistingDirectory(self, "选择导出位置")
+        if not parent_dir:
+            return
+
+        try:
+            output_dir = self._make_export_dir(parent_dir, "shot_edges")
+            format_str = self.format_combo.currentData() or self.format_combo.currentText().lower()
+            saver = ImageSaver(output_dir, format=format_str)
+            exported_shots = []
+
+            processor = VideoProcessor(self.video_path)
+            try:
+                processor.open()
+                for shot_idx in shot_indices:
+                    start, end = self.shots[shot_idx]
+                    first_frame, last_frame = self._edge_frame_indices(start, end)
+                    shot_files = []
+                    for role, frame_idx in (("start", first_frame), ("end", last_frame)):
+                        frame = processor.get_frame(frame_idx)
+                        filename = self._edge_frame_filename(shot_idx, role, frame_idx, format_str)
+                        filepath = saver.save_named_frame(
+                            frame,
+                            filename,
+                            frame_idx,
+                            shot_idx=shot_idx,
+                            role=role,
+                        )
+                        shot_files.append(
+                            {
+                                "role": role,
+                                "frame_idx": frame_idx,
+                                "timecode": self._frame_timecode(frame_idx),
+                                "filename": filename,
+                                "filepath": filepath,
+                            }
+                        )
+                    exported_shots.append(
+                        {
+                            "index": shot_idx + 1,
+                            "start_frame": start,
+                            "end_frame": end,
+                            "exported_start_frame": first_frame,
+                            "exported_end_frame": last_frame,
+                            "files": shot_files,
+                        }
+                    )
+            finally:
+                processor.close()
+
+            metadata = {
+                "app": "VideoFrameExtractor",
+                "version": APP_VERSION,
+                "export_type": "shot_edge_frames",
+                "scope": scope,
+                "created_at": datetime.now().isoformat(timespec="seconds"),
+                "video_path": self.video_path,
+                "format": format_str,
+                "edge_offset_frames": self.edge_frame_offset_spin.value(),
+                "total_exported_shots": len(exported_shots),
+                "shots": exported_shots,
+            }
+            saver.save_metadata(metadata)
+            self.status_label.setText(f"首尾帧已导出到 {output_dir}")
+        except Exception as exc:
+            self.status_label.setText(f"首尾帧导出失败: {exc}")
+            QMessageBox.warning(self, "首尾帧导出失败", str(exc))
 
     def export_dataset(self):
         if not self.selected_frames:
@@ -1168,6 +1347,70 @@ class MainWindow(QMainWindow):
         except Exception as exc:
             self.status_label.setText(f"导出失败: {exc}")
             QMessageBox.warning(self, "导出失败", str(exc))
+
+    def export_shot_videos(self):
+        if not self.video_path or not self.shots:
+            self.status_label.setText("请先处理视频")
+            return
+        if self.export_thread is not None and self.export_thread.isRunning():
+            self.status_label.setText("分镜视频正在导出")
+            return
+
+        parent_dir = QFileDialog.getExistingDirectory(self, "选择导出位置")
+        if not parent_dir:
+            return
+
+        output_dir = self._make_export_dir(parent_dir, "shot_videos")
+        mode = self.video_mode_combo.currentData() or "precise"
+        self._last_video_output_dir = output_dir
+        self.progress_bar.setValue(0)
+        self._set_video_export_running(True)
+
+        if mode == "copy" and not ffmpeg_executable():
+            self.status_label.setText("未找到 ffmpeg，将使用精确重编码导出视频")
+        else:
+            self.status_label.setText("正在导出分镜视频...")
+
+        self.export_thread = VideoExportThread(
+            self.video_path,
+            list(self.shots),
+            output_dir,
+            mode,
+        )
+        self.export_thread.progress.connect(self.progress_bar.setValue)
+        self.export_thread.finished.connect(self.on_video_export_finished)
+        self.export_thread.error.connect(self.on_video_export_error)
+        self.export_thread.start()
+
+    def _set_video_export_running(self, running: bool):
+        enabled = not running
+        self.process_btn.setEnabled(enabled)
+        if hasattr(self, "export_current_edges_btn"):
+            self.export_current_edges_btn.setEnabled(enabled)
+        if hasattr(self, "export_all_edges_btn"):
+            self.export_all_edges_btn.setEnabled(enabled)
+        if hasattr(self, "export_segments_btn"):
+            self.export_segments_btn.setEnabled(enabled)
+
+    def on_video_export_finished(self, metadata: dict):
+        self._set_video_export_running(False)
+        self.export_thread = None
+        output_dir = getattr(self, "_last_video_output_dir", "")
+        count = metadata.get("total_shots", 0)
+        actual_mode = metadata.get("actual_mode", "")
+        if actual_mode == "opencv_reencode":
+            mode_text = "精确重编码"
+        elif actual_mode == "copy":
+            mode_text = "快速原流"
+        else:
+            mode_text = "高质量重编码"
+        self.status_label.setText(f"分镜视频已导出 {count} 个（{mode_text}）到 {output_dir}")
+
+    def on_video_export_error(self, error_msg: str):
+        self._set_video_export_running(False)
+        self.export_thread = None
+        self.status_label.setText(f"分镜视频导出失败: {error_msg}")
+        QMessageBox.warning(self, "分镜视频导出失败", error_msg)
 
     def show_account_placeholder(self):
         QMessageBox.information(

@@ -13,6 +13,8 @@
 - 缩略图视图：快速浏览所有选中关键帧。
 - 手动微调：可在当前镜头范围内拖动帧滑块，逐帧前后移动，并替换当前关键帧。
 - 数据集导出：自动在选择的位置创建独立导出文件夹，保存无损 PNG 或有损 JPG 和 `metadata.json`。
+- 首尾帧导出：支持导出当前镜头或全部镜头的首尾帧，文件名包含镜头号、帧号和时间码。
+- 分镜视频导出：支持一键按镜头拆出片段视频，可选“精确切帧（高质量）”或“快速原流优先”。
 - 账号订阅入口：UI 已预留登录、注册、订阅按钮，后续可接后端和支付。
 
 ## 安装
@@ -83,5 +85,6 @@ video-frame-extractor/
     ├── video_processor.py
     ├── shot_detector.py
     ├── frame_selector.py
-    └── image_saver.py
+    ├── image_saver.py
+    └── video_exporter.py
 ```

@@ -24,6 +24,7 @@ if (Test-Path "dist") {
     --windowed `
     --collect-all scenedetect `
     --collect-all cv2 `
+    --collect-all imageio_ffmpeg `
     main.py
 
 $PackageRoot = Join-Path $Root "release"
