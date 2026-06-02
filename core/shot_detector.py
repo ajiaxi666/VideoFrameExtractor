@@ -3,7 +3,7 @@ from typing import Callable, List, Optional, Tuple
 
 import cv2
 import numpy as np
-from scenedetect import AdaptiveDetector, ContentDetector, detect
+from scenedetect import AdaptiveDetector, ContentDetector, FrameTimecode, detect
 
 
 @dataclass
@@ -89,26 +89,40 @@ class ShotDetector:
         if progress_callback:
             progress_callback(5)
 
+        pyscene_detectors = []
         if mode in {"content", "hybrid"}:
-            content_detector = ContentDetector(
-                threshold=self.settings.content_threshold,
-                min_scene_len=min_scene_len,
+            pyscene_detectors.append(
+                (
+                    "content",
+                    ContentDetector(
+                        threshold=self.settings.content_threshold,
+                        min_scene_len=min_scene_len,
+                    ),
+                )
             )
-            content_cuts = self._detect_with_pyscenedetect(video_path, content_detector)
-            self.last_cut_candidates["content"] = content_cuts
-            cuts.extend(content_cuts)
-
-        if progress_callback:
-            progress_callback(22)
 
         if mode in {"adaptive", "hybrid"}:
-            adaptive_detector = AdaptiveDetector(
-                adaptive_threshold=self.settings.adaptive_threshold,
-                min_scene_len=min_scene_len,
+            pyscene_detectors.append(
+                (
+                    "adaptive",
+                    AdaptiveDetector(
+                        adaptive_threshold=self.settings.adaptive_threshold,
+                        min_scene_len=min_scene_len,
+                    ),
+                )
             )
-            adaptive_cuts = self._detect_with_pyscenedetect(video_path, adaptive_detector)
-            self.last_cut_candidates["adaptive"] = adaptive_cuts
-            cuts.extend(adaptive_cuts)
+
+        if pyscene_detectors:
+            pyscene_results = self._detect_with_pyscenedetect_detectors(
+                video_path=video_path,
+                detectors=pyscene_detectors,
+                total_frames=total_frames,
+                fps=fps,
+                progress_callback=progress_callback,
+            )
+            for name, detector_cuts in pyscene_results.items():
+                self.last_cut_candidates[name] = detector_cuts
+                cuts.extend(detector_cuts)
 
         if progress_callback:
             progress_callback(36)
@@ -156,6 +170,61 @@ class ShotDetector:
                 continue
             cuts.append(scene_start.get_frames())
         return cuts
+
+    def _detect_with_pyscenedetect_detectors(
+        self,
+        video_path: str,
+        detectors,
+        total_frames: int,
+        fps: float,
+        progress_callback: Optional[Callable[[int], None]] = None,
+    ) -> dict:
+        """Run multiple PySceneDetect detectors in a single decode pass."""
+        cap = cv2.VideoCapture(video_path)
+        if not cap.isOpened():
+            raise ValueError(f"鏃犳硶鎵撳紑瑙嗛鏂囦欢: {video_path}")
+
+        results = {name: [] for name, _detector in detectors}
+        frame_idx = -1
+        last_reported = 5
+        fps = fps or 25.0
+
+        try:
+            while True:
+                ret, frame = cap.read()
+                if not ret:
+                    break
+
+                frame_idx += 1
+                timecode = FrameTimecode(frame_idx, fps)
+                for name, detector in detectors:
+                    for cut in detector.process_frame(timecode, frame):
+                        results[name].append(self._frame_num(cut))
+
+                if progress_callback and total_frames > 0:
+                    pct = 5 + int((frame_idx / total_frames) * 30)
+                    if pct > last_reported:
+                        progress_callback(min(pct, 35))
+                        last_reported = pct
+
+            if frame_idx >= 0:
+                last_timecode = FrameTimecode(frame_idx, fps)
+                for name, detector in detectors:
+                    for cut in detector.post_process(last_timecode):
+                        results[name].append(self._frame_num(cut))
+        finally:
+            cap.release()
+
+        return {
+            name: sorted(set(frame for frame in detector_cuts if frame > 0))
+            for name, detector_cuts in results.items()
+        }
+
+    def _frame_num(self, timecode) -> int:
+        frame_num = getattr(timecode, "frame_num", None)
+        if frame_num is not None:
+            return int(frame_num)
+        return int(timecode.get_frames())
 
     def _detect_with_histograms(
         self,

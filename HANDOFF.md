@@ -17,6 +17,10 @@
 - 导出：自动创建独立导出文件夹，保存无损 PNG 或有损 JPG + `metadata.json`，元数据包含检测参数、选帧参数、镜头范围、关键帧号。
 - 首尾帧导出：可导出当前镜头或全部镜头的首尾帧，默认避让切点 1 帧，命名为 `shot_013_start_f000200_t00-00-08.000.png` 这类格式。
 - 分镜视频导出：通过 `core/video_exporter.py` 按镜头批量导出片段视频，优先使用 `imageio-ffmpeg`/系统 ffmpeg；没有 ffmpeg 时回退到 OpenCV 重编码。
+- 拖拽导入：主窗口支持直接拖入本地视频文件。
+- 检测缓存：检测完成后自动写入 `%APPDATA%\VideoFrameExtractor\projects`，下次导入同一视频会加载镜头与关键帧，不必再次检测。
+- 检测结果文件：UI 支持保存/导入检测结果 JSON，并按当前视频大小和采样 hash 校验匹配关系。
+- 长视频提速：`core/shot_detector.py` 将 ContentDetector 与 AdaptiveDetector 合并到同一次 OpenCV 解码循环，减少混合模式的重复全片扫描。
 - 商业化预留：UI 已加入账号与订阅入口，但尚未接入后端鉴权或支付。
 
 ## 本轮优化重点
@@ -30,6 +34,7 @@
   - 新增 `mode`：`hybrid` / `content` / `adaptive` / `histogram`。
   - 新增可调参数：`content_threshold`、`adaptive_threshold`、`histogram_threshold`、`min_scene_len_seconds`。
   - 默认阈值更灵敏：内容阈值 12，自适应阈值 2.0，差异阈值 0.16，最短镜头 0.35 秒。
+  - ContentDetector 与 AdaptiveDetector 可在单次解码中并行处理，改善长视频检测速度。
 
 - `core/frame_selector.py`
   - 新增 `FrameSelectionSettings`。
@@ -45,6 +50,7 @@
   - 增加当前镜头帧滑块、手动逐帧替换关键帧和键盘快捷键。
   - 导出时自动创建 `{视频名}_keyframes_{时间}` 子文件夹。
   - 增加当前/批量首尾帧导出和分镜视频导出按钮。
+  - 增加拖拽导入视频、检测结果自动缓存加载、检测结果 JSON 保存/导入。
   - 增加账号/注册/订阅入口占位。
 - `core/video_exporter.py`
   - 新增镜头片段视频导出器。

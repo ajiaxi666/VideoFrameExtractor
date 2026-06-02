@@ -1,8 +1,10 @@
+import hashlib
 import json
 import os
 import sys
 from datetime import datetime
 from pathlib import Path
+from typing import Optional
 
 import cv2
 from PyQt5.QtCore import QSize, Qt, QThread, pyqtSignal
@@ -40,7 +42,7 @@ from core.shot_detector import ShotDetector
 from core.video_exporter import VideoSegmentExporter, ffmpeg_executable, format_timecode
 from core.video_processor import VideoProcessor
 
-APP_VERSION = "0.3.3"
+APP_VERSION = "0.3.4"
 
 
 class ProcessingThread(QThread):
@@ -134,6 +136,7 @@ class MainWindow(QMainWindow):
         super().__init__()
         self.setWindowTitle("视频镜头与关键帧提取工具")
         self.setGeometry(100, 100, 1420, 860)
+        self.setAcceptDrops(True)
 
         self.video_path = None
         self.video_info = {}
@@ -144,6 +147,7 @@ class MainWindow(QMainWindow):
         self.current_frame_idx = None
         self.thread = None
         self.export_thread = None
+        self.last_metrics = {}
         self.shortcuts = []
 
         self.init_ui()
@@ -558,6 +562,17 @@ class MainWindow(QMainWindow):
         self.export_segments_btn = QPushButton("导出分镜视频")
         self.export_segments_btn.clicked.connect(self.export_shot_videos)
         layout.addWidget(self.export_segments_btn)
+
+        project_row = QHBoxLayout()
+        self.save_project_btn = QPushButton("保存检测结果")
+        self.save_project_btn.setProperty("secondary", "true")
+        self.save_project_btn.clicked.connect(self.export_project_file)
+        self.import_project_btn = QPushButton("导入检测结果")
+        self.import_project_btn.setProperty("secondary", "true")
+        self.import_project_btn.clicked.connect(self.import_project_file)
+        project_row.addWidget(self.save_project_btn)
+        project_row.addWidget(self.import_project_btn)
+        layout.addLayout(project_row)
         return group
 
     def _build_account_group(self) -> QGroupBox:
@@ -676,10 +691,64 @@ class MainWindow(QMainWindow):
         if not filepath:
             return
 
+        self.load_video_path(filepath)
+
+    def load_video_path(self, filepath: str):
+        if not filepath:
+            return
+        path = Path(filepath)
+        if not path.exists():
+            self.status_label.setText(f"视频不存在: {filepath}")
+            return
+        if not self._is_supported_video(path):
+            self.status_label.setText("请拖入或选择视频文件")
+            return
+
         self.video_path = filepath
         self.file_label.setText(str(Path(filepath).name))
-        self._load_video_info(filepath)
         self._clear_results()
+        self._load_video_info(filepath)
+        self._try_load_project_cache()
+
+    def dragEnterEvent(self, event):
+        if self._drag_has_supported_video(event):
+            event.acceptProposedAction()
+        else:
+            event.ignore()
+
+    def dropEvent(self, event):
+        for url in event.mimeData().urls():
+            if not url.isLocalFile():
+                continue
+            path = Path(url.toLocalFile())
+            if self._is_supported_video(path):
+                self.load_video_path(str(path))
+                event.acceptProposedAction()
+                return
+        event.ignore()
+
+    def _drag_has_supported_video(self, event) -> bool:
+        if not event.mimeData().hasUrls():
+            return False
+        return any(
+            url.isLocalFile() and self._is_supported_video(Path(url.toLocalFile()))
+            for url in event.mimeData().urls()
+        )
+
+    def _is_supported_video(self, path: Path) -> bool:
+        return path.suffix.lower() in {
+            ".mp4",
+            ".avi",
+            ".mov",
+            ".mkv",
+            ".webm",
+            ".m4v",
+            ".mpg",
+            ".mpeg",
+            ".ts",
+            ".m2ts",
+            ".mts",
+        }
 
     def _load_video_info(self, filepath: str):
         try:
@@ -792,6 +861,195 @@ class MainWindow(QMainWindow):
 
     def _default_config_path(self) -> Path:
         return self._config_dir() / "default_settings.json"
+
+    def _project_cache_dir(self) -> Path:
+        return self._config_dir() / "projects"
+
+    def _video_signature(self, filepath: str) -> dict:
+        path = Path(filepath)
+        stat = path.stat()
+        return {
+            "name": path.name,
+            "size": stat.st_size,
+            "mtime_ns": stat.st_mtime_ns,
+            "sample_hash": self._video_sample_hash(path, stat.st_size),
+        }
+
+    def _video_sample_hash(self, path: Path, size: int) -> str:
+        digest = hashlib.sha1()
+        digest.update(str(size).encode("utf-8"))
+        chunk_size = 1024 * 1024
+        offsets = [0]
+        if size > chunk_size * 2:
+            offsets.append(max(0, size // 2 - chunk_size // 2))
+        if size > chunk_size:
+            offsets.append(max(0, size - chunk_size))
+
+        with path.open("rb") as f:
+            for offset in sorted(set(offsets)):
+                f.seek(offset)
+                digest.update(f.read(chunk_size))
+        return digest.hexdigest()
+
+    def _project_cache_key(self, signature: dict) -> str:
+        key_payload = {
+            "name": signature.get("name"),
+            "size": signature.get("size"),
+            "sample_hash": signature.get("sample_hash"),
+        }
+        raw = json.dumps(key_payload, sort_keys=True, ensure_ascii=False).encode("utf-8")
+        return hashlib.sha1(raw).hexdigest()
+
+    def _project_cache_path(self, filepath: Optional[str] = None) -> Path:
+        filepath = filepath or self.video_path
+        signature = self._video_signature(filepath)
+        return self._project_cache_dir() / f"{self._project_cache_key(signature)}.json"
+
+    def _current_project_payload(self) -> dict:
+        return {
+            "app": "VideoFrameExtractor",
+            "version": APP_VERSION,
+            "created_at": datetime.now().isoformat(timespec="seconds"),
+            "video_path": self.video_path,
+            "video_signature": self._video_signature(self.video_path),
+            "video_info": self.video_info,
+            "detection_settings": self._detection_settings(),
+            "selection_settings": self._selection_settings(),
+            "shots": [[start, end] for start, end in self.shots],
+            "selected_frames": self.selected_frames,
+            "metrics": self.last_metrics,
+        }
+
+    def _save_project_cache(self):
+        if not self.video_path or not self.shots:
+            return None
+        path = self._project_cache_path(self.video_path)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(
+            json.dumps(self._current_project_payload(), indent=2, ensure_ascii=False),
+            encoding="utf-8",
+        )
+        return path
+
+    def export_project_file(self):
+        if not self.video_path or not self.shots:
+            self.status_label.setText("请先处理视频，再保存检测结果")
+            return
+
+        video_name = self._safe_folder_name(Path(self.video_path).stem)
+        default_name = f"{video_name}_shot_project_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+        filepath, _ = QFileDialog.getSaveFileName(
+            self,
+            "保存检测结果",
+            default_name,
+            "JSON 文件 (*.json);;所有文件 (*)",
+        )
+        if not filepath:
+            return
+        try:
+            path = Path(filepath)
+            if path.suffix.lower() != ".json":
+                path = path.with_suffix(".json")
+            path.write_text(
+                json.dumps(self._current_project_payload(), indent=2, ensure_ascii=False),
+                encoding="utf-8",
+            )
+            self.status_label.setText(f"检测结果已保存: {path}")
+        except Exception as exc:
+            QMessageBox.warning(self, "保存检测结果失败", str(exc))
+
+    def import_project_file(self):
+        filepath, _ = QFileDialog.getOpenFileName(
+            self,
+            "导入检测结果",
+            "",
+            "JSON 文件 (*.json);;所有文件 (*)",
+        )
+        if not filepath:
+            return
+        try:
+            payload = json.loads(Path(filepath).read_text(encoding="utf-8"))
+            payload_video_path = payload.get("video_path")
+            if not self.video_path:
+                if payload_video_path and Path(payload_video_path).exists():
+                    self.video_path = payload_video_path
+                    self.file_label.setText(str(Path(payload_video_path).name))
+                    self._clear_results()
+                    self._load_video_info(payload_video_path)
+                else:
+                    QMessageBox.warning(self, "导入检测结果失败", "请先选择原视频文件")
+                    return
+
+            if not self._project_matches_current_video(payload):
+                QMessageBox.warning(self, "导入检测结果失败", "检测结果与当前视频不匹配")
+                return
+
+            self._apply_project_payload(payload)
+            self._save_project_cache()
+            self.status_label.setText(f"检测结果已导入: {filepath}")
+        except Exception as exc:
+            QMessageBox.warning(self, "导入检测结果失败", str(exc))
+
+    def _project_matches_current_video(self, payload: dict) -> bool:
+        expected = payload.get("video_signature") or {}
+        if not expected or not self.video_path:
+            return True
+        current = self._video_signature(self.video_path)
+        return (
+            int(expected.get("size", -1)) == int(current.get("size", -2))
+            and expected.get("sample_hash") == current.get("sample_hash")
+        )
+
+    def _try_load_project_cache(self) -> bool:
+        if not self.video_path:
+            return False
+        try:
+            path = self._project_cache_path(self.video_path)
+            if not path.exists():
+                return False
+            payload = json.loads(path.read_text(encoding="utf-8"))
+            self._apply_project_payload(payload)
+            self.status_label.setText(
+                f"已加载检测缓存：{len(self.shots)} 个镜头，可直接预览和导出"
+            )
+            return True
+        except Exception as exc:
+            self.status_label.setText(f"检测缓存读取失败，可重新检测: {exc}")
+            return False
+
+    def _apply_project_payload(self, payload: dict):
+        shots = payload.get("shots") or []
+        selected_frames = payload.get("selected_frames") or []
+        if not shots:
+            raise ValueError("缓存中没有镜头数据")
+
+        self.shots = [(int(start), int(end)) for start, end in shots]
+        self.selected_frames = [
+            [int(frame_idx) for frame_idx in frames]
+            for frames in selected_frames
+        ]
+        while len(self.selected_frames) < len(self.shots):
+            start, end = self.shots[len(self.selected_frames)]
+            self.selected_frames.append([(start + end) // 2])
+
+        self.last_metrics = payload.get("metrics") or {}
+        cached_video_info = payload.get("video_info") or {}
+        if cached_video_info:
+            self.video_info.update(cached_video_info)
+
+        self.progress_bar.setValue(100)
+        self._populate_shot_list()
+        self._populate_frame_grid()
+        keyframe_count = sum(len(frames) for frames in self.selected_frames)
+        self.summary_label.setText(
+            f"已加载缓存：{len(self.shots)} 个镜头，{keyframe_count} 帧"
+        )
+
+        first_frame = self._first_selected_frame()
+        if first_frame is not None:
+            self.active_shot_idx = 0
+            self.active_keyframe_idx = 0
+            self.show_frame(first_frame)
 
     def _current_config(self) -> dict:
         return {
@@ -965,6 +1223,7 @@ class MainWindow(QMainWindow):
         self.process_btn.setEnabled(True)
         self.shots = shots
         self.selected_frames = selected_frames
+        self.last_metrics = metrics
         self.video_info.update(metrics)
 
         self._populate_shot_list()
@@ -990,6 +1249,10 @@ class MainWindow(QMainWindow):
             self.active_shot_idx = 0
             self.active_keyframe_idx = 0
             self.show_frame(first_frame)
+
+        cache_path = self._save_project_cache()
+        if cache_path:
+            self.status_label.setText(f"{self.status_label.text()} | 检测结果已缓存")
 
     def on_processing_error(self, error_msg):
         self.process_btn.setEnabled(True)
@@ -1119,6 +1382,7 @@ class MainWindow(QMainWindow):
         self.active_keyframe_idx = self.selected_frames[self.active_shot_idx].index(self.current_frame_idx)
         self._populate_shot_list()
         self._populate_frame_grid()
+        self._save_project_cache()
         self.status_label.setText(
             f"已更新镜头 {self.active_shot_idx + 1} 的关键帧为 {self.current_frame_idx}"
         )
@@ -1391,6 +1655,10 @@ class MainWindow(QMainWindow):
             self.export_all_edges_btn.setEnabled(enabled)
         if hasattr(self, "export_segments_btn"):
             self.export_segments_btn.setEnabled(enabled)
+        if hasattr(self, "save_project_btn"):
+            self.save_project_btn.setEnabled(enabled)
+        if hasattr(self, "import_project_btn"):
+            self.import_project_btn.setEnabled(enabled)
 
     def on_video_export_finished(self, metadata: dict):
         self._set_video_export_running(False)
