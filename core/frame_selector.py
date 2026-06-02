@@ -40,38 +40,47 @@ class FrameSelector:
         """Return a list of selected frame indices for every shot."""
         cap = cv2.VideoCapture(video_path)
         if not cap.isOpened():
-            raise ValueError(f"无法打开视频文件: {video_path}")
+            raise ValueError(f"????????: {video_path}")
 
-        sample_sets = [self._sample_indices(start, end) for start, end in shots]
-        candidates: List[List[Tuple[float, int]]] = [[] for _ in shots]
-        current_shot = 0
-        frame_idx = 0
         total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+        sample_sets = [self._sample_indices(start, end) for start, end in shots]
+        sample_lookup = {
+            int(frame_idx): shot_idx
+            for shot_idx, sample_set in enumerate(sample_sets)
+            for frame_idx in sample_set
+        }
+        wanted_frames = sorted(
+            frame_idx
+            for frame_idx in sample_lookup
+            if 0 <= frame_idx < total_frames
+        )
+        candidates: List[List[Tuple[float, int]]] = [[] for _ in shots]
+        frame_idx = -1
         last_reported = 50
 
-        while True:
-            ret, frame = cap.read()
-            if not ret:
+        for target_frame in wanted_frames:
+            exhausted = False
+            while frame_idx < target_frame:
+                if not cap.grab():
+                    exhausted = True
+                    break
+                frame_idx += 1
+
+                if progress_callback and total_frames > 0:
+                    pct = 50 + int((frame_idx / total_frames) * 49)
+                    if pct - last_reported >= 2:
+                        progress_callback(pct)
+                        last_reported = pct
+
+            if exhausted or frame_idx != target_frame:
                 break
 
-            while current_shot < len(shots) and frame_idx > shots[current_shot][1]:
-                current_shot += 1
-
-            if current_shot >= len(shots):
-                break
-
-            if frame_idx in sample_sets[current_shot]:
+            ret, frame = cap.retrieve()
+            if ret:
+                shot_idx = sample_lookup[target_frame]
                 score = self._calculate_frame_score(frame)
-                self.frame_scores[frame_idx] = score
-                candidates[current_shot].append((score, frame_idx))
-
-            if progress_callback and total_frames > 0:
-                pct = 50 + int((frame_idx / total_frames) * 49)
-                if pct - last_reported >= 2:
-                    progress_callback(pct)
-                    last_reported = pct
-
-            frame_idx += 1
+                self.frame_scores[target_frame] = score
+                candidates[shot_idx].append((score, target_frame))
 
         cap.release()
 
@@ -183,5 +192,5 @@ class FrameSelector:
         ret, frame = cap.read()
         cap.release()
         if not ret:
-            raise ValueError(f"无法读取第 {frame_idx} 帧")
+            raise ValueError(f"????? {frame_idx} ?")
         return frame

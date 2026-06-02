@@ -5,7 +5,7 @@ from typing import Dict, Optional
 
 import numpy as np
 
-FEATURE_CACHE_VERSION = 1
+FEATURE_CACHE_VERSION = 2
 
 
 def video_sample_hash(path: Path, size: Optional[int] = None) -> str:
@@ -47,9 +47,16 @@ def cache_key(signature: Dict) -> str:
     return hashlib.sha1(raw).hexdigest()
 
 
-def feature_cache_path(cache_dir: str, video_path: str, analysis_width: int) -> Path:
+def feature_cache_path(
+    cache_dir: str,
+    video_path: str,
+    analysis_width: int,
+    analysis_frame_step: int = 1,
+) -> Path:
     signature = video_signature(video_path)
-    return Path(cache_dir) / f"{cache_key(signature)}_w{int(analysis_width)}.npz"
+    return Path(cache_dir) / (
+        f"{cache_key(signature)}_w{int(analysis_width)}_s{int(analysis_frame_step)}.npz"
+    )
 
 
 class FeatureCache:
@@ -58,22 +65,43 @@ class FeatureCache:
     def __init__(self, cache_dir: Optional[str]):
         self.cache_dir = Path(cache_dir) if cache_dir else None
 
-    def load(self, video_path: str, total_frames: int, fps: float, analysis_width: int):
+    def load(
+        self,
+        video_path: str,
+        total_frames: int,
+        fps: float,
+        analysis_width: int,
+        analysis_frame_step: int = 1,
+    ):
         if not self.cache_dir:
             return None
-        path = feature_cache_path(str(self.cache_dir), video_path, analysis_width)
+        path = feature_cache_path(
+            str(self.cache_dir),
+            video_path,
+            analysis_width,
+            analysis_frame_step,
+        )
         if not path.exists():
             return None
 
         try:
             with np.load(path, allow_pickle=False) as data:
                 metadata = json.loads(str(data["metadata"].item()))
-                if not self._metadata_matches(metadata, video_path, total_frames, fps, analysis_width):
+                if not self._metadata_matches(
+                    metadata,
+                    video_path,
+                    total_frames,
+                    fps,
+                    analysis_width,
+                    analysis_frame_step,
+                ):
                     return None
                 return {
                     "metadata": metadata,
                     "content_scores": data["content_scores"].astype(np.float32, copy=False),
                     "histogram_scores": data["histogram_scores"].astype(np.float32, copy=False),
+                    "sampled_frames": data["sampled_frames"].astype(np.int32, copy=False),
+                    "sample_step": int(metadata.get("analysis_frame_step", analysis_frame_step)),
                     "path": str(path),
                 }
         except Exception:
@@ -85,25 +113,34 @@ class FeatureCache:
         total_frames: int,
         fps: float,
         analysis_width: int,
+        analysis_frame_step: int,
         content_scores,
         histogram_scores,
+        sampled_frames,
     ):
         if not self.cache_dir:
             return None
         self.cache_dir.mkdir(parents=True, exist_ok=True)
-        path = feature_cache_path(str(self.cache_dir), video_path, analysis_width)
+        path = feature_cache_path(
+            str(self.cache_dir),
+            video_path,
+            analysis_width,
+            analysis_frame_step,
+        )
         metadata = {
             "version": FEATURE_CACHE_VERSION,
             "video_signature": video_signature(video_path),
             "total_frames": int(total_frames),
             "fps": float(fps),
             "analysis_width": int(analysis_width),
+            "analysis_frame_step": int(analysis_frame_step),
         }
         np.savez_compressed(
             path,
             metadata=np.array(json.dumps(metadata, ensure_ascii=False)),
             content_scores=np.asarray(content_scores, dtype=np.float32),
             histogram_scores=np.asarray(histogram_scores, dtype=np.float32),
+            sampled_frames=np.asarray(sampled_frames, dtype=np.int32),
         )
         return path
 
@@ -114,10 +151,13 @@ class FeatureCache:
         total_frames: int,
         fps: float,
         analysis_width: int,
+        analysis_frame_step: int,
     ) -> bool:
         if int(metadata.get("version", -1)) != FEATURE_CACHE_VERSION:
             return False
         if int(metadata.get("analysis_width", -1)) != int(analysis_width):
+            return False
+        if int(metadata.get("analysis_frame_step", -1)) != int(analysis_frame_step):
             return False
         if int(metadata.get("total_frames", -1)) != int(total_frames):
             return False

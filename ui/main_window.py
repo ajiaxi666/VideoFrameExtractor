@@ -46,7 +46,7 @@ from core.shot_detector import ShotDetector
 from core.video_exporter import VideoSegmentExporter, ffmpeg_executable, format_timecode
 from core.video_processor import VideoProcessor
 
-APP_VERSION = "0.3.9"
+APP_VERSION = "0.3.10"
 
 
 class ProcessingThread(QThread):
@@ -140,7 +140,7 @@ class MainWindow(QMainWindow):
 
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("视频镜头与关键帧提取工具")
+        self.setWindowTitle("????????????")
         self.setGeometry(100, 100, 1420, 860)
         self.setAcceptDrops(True)
 
@@ -419,13 +419,13 @@ class MainWindow(QMainWindow):
 
         title = QLabel("VideoFrameExtractor")
         title.setObjectName("appTitleLabel")
-        self.top_context_label = QLabel("未选择视频")
+        self.top_context_label = QLabel("?????")
         self.top_context_label.setObjectName("contextLabel")
         self.top_context_label.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Preferred)
 
         version_label = QLabel(f"v{APP_VERSION}")
         version_label.setObjectName("badgeLabel")
-        mode_label = QLabel("本地模式")
+        mode_label = QLabel("????")
         mode_label.setObjectName("badgeLabel")
 
         layout.addWidget(title)
@@ -476,25 +476,25 @@ class MainWindow(QMainWindow):
         return scroll
 
     def _build_file_group(self) -> QGroupBox:
-        group = QGroupBox("视频文件")
+        group = QGroupBox("????")
         layout = QVBoxLayout(group)
         layout.setSpacing(8)
 
-        self.file_label = QLabel("未选择视频")
+        self.file_label = QLabel("?????")
         self.file_label.setWordWrap(True)
         self.file_label.setObjectName("fileDropLabel")
         self.file_label.setAlignment(Qt.AlignCenter)
         self.file_label.setMinimumHeight(52)
         self.file_label.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Preferred)
 
-        select_btn = QPushButton("选择视频文件")
+        select_btn = QPushButton("??????")
         select_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         select_btn.clicked.connect(self.select_video)
 
         layout.addWidget(self.file_label)
         layout.addWidget(select_btn)
 
-        self.video_meta_label = QLabel("时长、分辨率和帧率会在选择后显示")
+        self.video_meta_label = QLabel("????????????????")
         self.video_meta_label.setObjectName("mutedLabel")
         self.video_meta_label.setWordWrap(True)
         self.video_meta_label.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Preferred)
@@ -502,7 +502,7 @@ class MainWindow(QMainWindow):
         return group
 
     def _build_detection_group(self) -> QGroupBox:
-        group = QGroupBox("镜头检测")
+        group = QGroupBox("????")
         form = QFormLayout(group)
         form.setLabelAlignment(Qt.AlignLeft)
         form.setFieldGrowthPolicy(QFormLayout.AllNonFixedFieldsGrow)
@@ -510,16 +510,16 @@ class MainWindow(QMainWindow):
         form.setVerticalSpacing(10)
 
         self.preset_combo = QComboBox()
-        self.preset_combo.addItem("平衡", "balanced")
-        self.preset_combo.addItem("更灵敏", "sensitive")
-        self.preset_combo.addItem("更保守", "conservative")
+        self.preset_combo.addItem("??", "balanced")
+        self.preset_combo.addItem("???", "sensitive")
+        self.preset_combo.addItem("???", "conservative")
         self.preset_combo.currentIndexChanged.connect(self.apply_detection_preset)
 
         self.mode_combo = QComboBox()
-        self.mode_combo.addItem("混合增强（推荐）", "hybrid")
-        self.mode_combo.addItem("标准内容检测", "content")
-        self.mode_combo.addItem("自适应检测", "adaptive")
-        self.mode_combo.addItem("直方图补充检测", "histogram")
+        self.mode_combo.addItem("????????", "hybrid")
+        self.mode_combo.addItem("??????", "content")
+        self.mode_combo.addItem("?????", "adaptive")
+        self.mode_combo.addItem("???????", "histogram")
 
         self.content_threshold_spin = QDoubleSpinBox()
         self.content_threshold_spin.setRange(5.0, 50.0)
@@ -540,7 +540,7 @@ class MainWindow(QMainWindow):
         self.min_scene_len_spin = QDoubleSpinBox()
         self.min_scene_len_spin.setRange(0.10, 3.00)
         self.min_scene_len_spin.setSingleStep(0.05)
-        self.min_scene_len_spin.setSuffix(" 秒")
+        self.min_scene_len_spin.setSuffix(" ?")
         self.min_scene_len_spin.setValue(0.35)
 
         self.sensitivity_slider = QSlider(Qt.Horizontal)
@@ -557,9 +557,9 @@ class MainWindow(QMainWindow):
         slider_layout.addWidget(self.sensitivity_slider)
 
         scale_row = QHBoxLayout()
-        less_label = QLabel("切少")
+        less_label = QLabel("??")
         less_label.setObjectName("mutedLabel")
-        more_label = QLabel("切多")
+        more_label = QLabel("??")
         more_label.setObjectName("mutedLabel")
         self.sensitivity_value_label = QLabel()
         self.sensitivity_value_label.setAlignment(Qt.AlignCenter)
@@ -570,8 +570,8 @@ class MainWindow(QMainWindow):
         scale_row.addWidget(more_label)
         slider_layout.addLayout(scale_row)
 
-        form.addRow("场景", self.preset_combo)
-        form.addRow("切分灵敏度", slider_panel)
+        form.addRow("??", self.preset_combo)
+        form.addRow("?????", slider_panel)
 
         self.merge_slider = QSlider(Qt.Horizontal)
         self.merge_slider.setRange(0, 100)
@@ -587,9 +587,9 @@ class MainWindow(QMainWindow):
         merge_layout.addWidget(self.merge_slider)
 
         merge_scale_row = QHBoxLayout()
-        off_label = QLabel("关闭")
+        off_label = QLabel("??")
         off_label.setObjectName("mutedLabel")
-        strong_label = QLabel("更强")
+        strong_label = QLabel("??")
         strong_label.setObjectName("mutedLabel")
         self.merge_value_label = QLabel()
         self.merge_value_label.setAlignment(Qt.AlignCenter)
@@ -600,13 +600,13 @@ class MainWindow(QMainWindow):
         merge_scale_row.addWidget(strong_label)
         merge_layout.addLayout(merge_scale_row)
 
-        form.addRow("运镜误切修正", merge_panel)
+        form.addRow("??????", merge_panel)
         self.apply_sensitivity_from_slider(self.sensitivity_slider.value())
         self.update_merge_label(self.merge_slider.value())
         return group
 
     def _build_selection_group(self) -> QGroupBox:
-        group = QGroupBox("关键帧输出")
+        group = QGroupBox("?????")
         form = QFormLayout(group)
         form.setFieldGrowthPolicy(QFormLayout.AllNonFixedFieldsGrow)
         form.setHorizontalSpacing(12)
@@ -617,9 +617,9 @@ class MainWindow(QMainWindow):
         self.frames_per_shot_spin.setValue(2)
 
         self.max_samples_spin = QSpinBox()
-        self.max_samples_spin.setRange(20, 240)
-        self.max_samples_spin.setSingleStep(10)
-        self.max_samples_spin.setValue(90)
+        self.max_samples_spin.setRange(12, 240)
+        self.max_samples_spin.setSingleStep(4)
+        self.max_samples_spin.setValue(24)
 
         self.edge_margin_spin = QDoubleSpinBox()
         self.edge_margin_spin.setRange(0.0, 25.0)
@@ -631,22 +631,22 @@ class MainWindow(QMainWindow):
         self.edge_frame_offset_spin.setRange(0, 12)
         self.edge_frame_offset_spin.setValue(1)
 
-        form.addRow("每镜头帧数", self.frames_per_shot_spin)
-        form.addRow("首尾避让帧数", self.edge_frame_offset_spin)
+        form.addRow("?????", self.frames_per_shot_spin)
+        form.addRow("??????", self.edge_frame_offset_spin)
         return group
 
     def _build_config_group(self) -> QGroupBox:
-        group = QGroupBox("参数配置")
+        group = QGroupBox("????")
         layout = QVBoxLayout(group)
         layout.setSpacing(8)
 
         first_row = QHBoxLayout()
         first_row.setSpacing(8)
-        save_btn = QPushButton("保存参数")
+        save_btn = QPushButton("????")
         save_btn.setProperty("secondary", "true")
         save_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         save_btn.clicked.connect(self.save_current_config)
-        default_btn = QPushButton("设为默认")
+        default_btn = QPushButton("????")
         default_btn.setProperty("secondary", "true")
         default_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         default_btn.clicked.connect(self.set_default_config)
@@ -656,11 +656,11 @@ class MainWindow(QMainWindow):
 
         second_row = QHBoxLayout()
         second_row.setSpacing(8)
-        import_btn = QPushButton("导入参数")
+        import_btn = QPushButton("????")
         import_btn.setProperty("secondary", "true")
         import_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         import_btn.clicked.connect(self.import_config)
-        export_btn = QPushButton("导出参数")
+        export_btn = QPushButton("????")
         export_btn.setProperty("secondary", "true")
         export_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         export_btn.clicked.connect(self.export_config)
@@ -670,22 +670,22 @@ class MainWindow(QMainWindow):
         return group
 
     def _build_cache_group(self) -> QGroupBox:
-        group = QGroupBox("缓存管理")
+        group = QGroupBox("????")
         layout = QVBoxLayout(group)
         layout.setSpacing(8)
 
-        self.cache_label = QLabel("缓存大小计算中")
+        self.cache_label = QLabel("???????")
         self.cache_label.setObjectName("mutedLabel")
         self.cache_label.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Preferred)
         layout.addWidget(self.cache_label)
 
         first_row = QHBoxLayout()
         first_row.setSpacing(8)
-        clear_current_btn = QPushButton("清当前视频缓存")
+        clear_current_btn = QPushButton("???????")
         clear_current_btn.setProperty("secondary", "true")
         clear_current_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         clear_current_btn.clicked.connect(self.clear_current_video_cache)
-        clear_all_btn = QPushButton("清全部缓存")
+        clear_all_btn = QPushButton("?????")
         clear_all_btn.setProperty("secondary", "true")
         clear_all_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         clear_all_btn.clicked.connect(self.clear_all_cache)
@@ -695,11 +695,11 @@ class MainWindow(QMainWindow):
 
         second_row = QHBoxLayout()
         second_row.setSpacing(8)
-        open_cache_btn = QPushButton("打开缓存文件夹")
+        open_cache_btn = QPushButton("???????")
         open_cache_btn.setProperty("secondary", "true")
         open_cache_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         open_cache_btn.clicked.connect(self.open_cache_folder)
-        clear_results_btn = QPushButton("清空当前结果")
+        clear_results_btn = QPushButton("??????")
         clear_results_btn.setProperty("secondary", "true")
         clear_results_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         clear_results_btn.clicked.connect(self.clear_current_results)
@@ -710,11 +710,11 @@ class MainWindow(QMainWindow):
         return group
 
     def _build_action_group(self) -> QGroupBox:
-        group = QGroupBox("处理")
+        group = QGroupBox("??")
         layout = QVBoxLayout(group)
         layout.setSpacing(8)
 
-        self.process_btn = QPushButton("开始检测并选帧")
+        self.process_btn = QPushButton("???????")
         self.process_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.process_btn.clicked.connect(self.process_video)
         layout.addWidget(self.process_btn)
@@ -723,7 +723,7 @@ class MainWindow(QMainWindow):
         self.progress_bar.setRange(0, 100)
         layout.addWidget(self.progress_bar)
 
-        self.status_label = QLabel("准备就绪")
+        self.status_label = QLabel("????")
         self.status_label.setObjectName("statusLabel")
         self.status_label.setWordWrap(True)
         self.status_label.setMinimumWidth(0)
@@ -732,30 +732,30 @@ class MainWindow(QMainWindow):
         return group
 
     def _build_export_group(self) -> QGroupBox:
-        group = QGroupBox("导出")
+        group = QGroupBox("??")
         layout = QVBoxLayout(group)
         layout.setSpacing(8)
 
         row = QHBoxLayout()
-        row.addWidget(QLabel("格式"))
+        row.addWidget(QLabel("??"))
         self.format_combo = QComboBox()
-        self.format_combo.addItem("PNG（无损）", "png")
-        self.format_combo.addItem("JPG（有损/小文件）", "jpg")
+        self.format_combo.addItem("PNG????", "png")
+        self.format_combo.addItem("JPG???/????", "jpg")
         row.addWidget(self.format_combo)
         layout.addLayout(row)
 
-        export_btn = QPushButton("导出数据集")
+        export_btn = QPushButton("?????")
         export_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         export_btn.clicked.connect(self.export_dataset)
         layout.addWidget(export_btn)
 
         edge_row = QHBoxLayout()
         edge_row.setSpacing(8)
-        self.export_current_edges_btn = QPushButton("导出当前首尾帧")
+        self.export_current_edges_btn = QPushButton("???????")
         self.export_current_edges_btn.setProperty("secondary", "true")
         self.export_current_edges_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.export_current_edges_btn.clicked.connect(self.export_current_edge_frames)
-        self.export_all_edges_btn = QPushButton("批量导出首尾帧")
+        self.export_all_edges_btn = QPushButton("???????")
         self.export_all_edges_btn.setProperty("secondary", "true")
         self.export_all_edges_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.export_all_edges_btn.clicked.connect(self.export_all_edge_frames)
@@ -764,25 +764,25 @@ class MainWindow(QMainWindow):
         layout.addLayout(edge_row)
 
         video_row = QHBoxLayout()
-        video_row.addWidget(QLabel("视频"))
+        video_row.addWidget(QLabel("??"))
         self.video_mode_combo = QComboBox()
-        self.video_mode_combo.addItem("精确切帧（重编码）", "precise")
-        self.video_mode_combo.addItem("原流快切（不重编码）", "copy")
+        self.video_mode_combo.addItem("?????????", "precise")
+        self.video_mode_combo.addItem("??????????", "copy")
         video_row.addWidget(self.video_mode_combo)
         layout.addLayout(video_row)
 
-        self.export_segments_btn = QPushButton("导出分镜视频")
+        self.export_segments_btn = QPushButton("??????")
         self.export_segments_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.export_segments_btn.clicked.connect(self.export_shot_videos)
         layout.addWidget(self.export_segments_btn)
 
         project_row = QHBoxLayout()
         project_row.setSpacing(8)
-        self.save_project_btn = QPushButton("保存检测结果")
+        self.save_project_btn = QPushButton("??????")
         self.save_project_btn.setProperty("secondary", "true")
         self.save_project_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.save_project_btn.clicked.connect(self.export_project_file)
-        self.import_project_btn = QPushButton("导入检测结果")
+        self.import_project_btn = QPushButton("??????")
         self.import_project_btn.setProperty("secondary", "true")
         self.import_project_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.import_project_btn.clicked.connect(self.import_project_file)
@@ -792,19 +792,19 @@ class MainWindow(QMainWindow):
         return group
 
     def _build_account_group(self) -> QGroupBox:
-        group = QGroupBox("账号与订阅")
+        group = QGroupBox("?????")
         layout = QVBoxLayout(group)
 
-        self.account_label = QLabel("本地模式")
+        self.account_label = QLabel("????")
         self.account_label.setObjectName("mutedLabel")
         layout.addWidget(self.account_label)
 
         row = QHBoxLayout()
-        login_btn = QPushButton("登录")
+        login_btn = QPushButton("??")
         login_btn.setProperty("secondary", "true")
-        signup_btn = QPushButton("注册")
+        signup_btn = QPushButton("??")
         signup_btn.setProperty("secondary", "true")
-        billing_btn = QPushButton("订阅")
+        billing_btn = QPushButton("??")
         billing_btn.setProperty("secondary", "true")
         for button in (login_btn, signup_btn, billing_btn):
             button.clicked.connect(self.show_account_placeholder)
@@ -821,9 +821,9 @@ class MainWindow(QMainWindow):
         header = QWidget()
         header_layout = QHBoxLayout(header)
         header_layout.setContentsMargins(2, 0, 2, 0)
-        title = QLabel("检测结果")
+        title = QLabel("????")
         title.setObjectName("sectionTitleLabel")
-        self.summary_label = QLabel("还没有检测结果")
+        self.summary_label = QLabel("???????")
         self.summary_label.setObjectName("summaryLabel")
         self.summary_label.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Preferred)
         header_layout.addWidget(title)
@@ -833,7 +833,7 @@ class MainWindow(QMainWindow):
 
         shot_splitter = QSplitter(Qt.Vertical)
 
-        shot_box = QGroupBox("镜头列表")
+        shot_box = QGroupBox("????")
         shot_layout = QVBoxLayout(shot_box)
         self.shot_list = QListWidget()
         self.shot_list.setAlternatingRowColors(True)
@@ -841,7 +841,7 @@ class MainWindow(QMainWindow):
         shot_layout.addWidget(self.shot_list)
         shot_splitter.addWidget(shot_box)
 
-        frame_box = QGroupBox("关键帧缩略图")
+        frame_box = QGroupBox("??????")
         frame_layout = QVBoxLayout(frame_box)
         self.frame_grid = QListWidget()
         self.frame_grid.setViewMode(QListView.IconMode)
@@ -864,11 +864,11 @@ class MainWindow(QMainWindow):
         layout.setContentsMargins(4, 0, 4, 0)
         layout.setSpacing(8)
 
-        preview_box = QGroupBox("当前镜头预览与手动微调")
+        preview_box = QGroupBox("???????????")
         preview_layout = QVBoxLayout(preview_box)
         preview_layout.setSpacing(8)
 
-        self.preview_label = QLabel("选择视频并开始检测")
+        self.preview_label = QLabel("?????????")
         self.preview_label.setObjectName("previewLabel")
         self.preview_label.setAlignment(Qt.AlignCenter)
         self.preview_label.setMinimumSize(520, 360)
@@ -877,9 +877,9 @@ class MainWindow(QMainWindow):
 
         info_row = QHBoxLayout()
         info_row.setSpacing(8)
-        self.frame_info_label = QLabel("帧信息")
+        self.frame_info_label = QLabel("???")
         self.frame_info_label.setObjectName("mutedLabel")
-        self.shot_range_label = QLabel("当前镜头范围")
+        self.shot_range_label = QLabel("??????")
         self.shot_range_label.setObjectName("mutedLabel")
         self.shot_range_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
         info_row.addWidget(self.frame_info_label, 1)
@@ -895,15 +895,15 @@ class MainWindow(QMainWindow):
         nav_layout = QHBoxLayout()
         previous_btn = QToolButton()
         previous_btn.setIcon(self.style().standardIcon(QStyle.SP_ArrowLeft))
-        previous_btn.setToolTip("上一帧（左方向键 / 数字键 4）")
+        previous_btn.setToolTip("???????? / ??? 4?")
         previous_btn.clicked.connect(lambda: self.nudge_frame(-1))
         next_btn = QToolButton()
         next_btn.setIcon(self.style().standardIcon(QStyle.SP_ArrowRight))
-        next_btn.setToolTip("下一帧（右方向键 / 数字键 6）")
+        next_btn.setToolTip("???????? / ??? 6?")
         next_btn.clicked.connect(lambda: self.nudge_frame(1))
-        replace_btn = QPushButton("设为当前关键帧")
+        replace_btn = QPushButton("???????")
         replace_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        replace_btn.setToolTip("设为当前关键帧（数字键 5 / 回车）")
+        replace_btn.setToolTip("??????????? 5 / ???")
         replace_btn.clicked.connect(self.replace_active_keyframe)
         nav_layout.addWidget(previous_btn)
         nav_layout.addWidget(next_btn)
@@ -916,9 +916,9 @@ class MainWindow(QMainWindow):
     def select_video(self):
         filepath, _ = QFileDialog.getOpenFileName(
             self,
-            "选择视频文件",
+            "??????",
             "",
-            "视频文件 (*.mp4 *.avi *.mov *.mkv *.webm);;所有文件 (*)",
+            "???? (*.mp4 *.avi *.mov *.mkv *.webm);;???? (*)",
         )
 
         if not filepath:
@@ -931,10 +931,10 @@ class MainWindow(QMainWindow):
             return
         path = Path(filepath)
         if not path.exists():
-            self._set_status(f"视频不存在: {filepath}")
+            self._set_status(f"?????: {filepath}")
             return
         if not self._is_supported_video(path):
-            self._set_status("请拖入或选择视频文件")
+            self._set_status("??????????")
             return
 
         self.video_path = filepath
@@ -1008,7 +1008,7 @@ class MainWindow(QMainWindow):
 
     def _set_path_status(self, prefix: str, path: object):
         path_text = str(path)
-        separator = " " if prefix.endswith("到") else ": "
+        separator = " " if prefix.endswith("?") else ": "
         message = f"{prefix}{separator}{path_text}"
         self._set_status(message, tooltip=message, limit=58)
 
@@ -1026,33 +1026,33 @@ class MainWindow(QMainWindow):
             }
             probe.close()
             self.video_meta_label.setText(
-                f"{duration:.1f} 秒 | {probe.width}x{probe.height} | "
-                f"{probe.fps:.2f} fps | {probe.total_frames} 帧"
+                f"{duration:.1f} ? | {probe.width}x{probe.height} | "
+                f"{probe.fps:.2f} fps | {probe.total_frames} ?"
             )
             if hasattr(self, "top_context_label"):
                 self._set_compact_label(
                     self.top_context_label,
                     (
-                        f"{Path(filepath).name} | {duration:.1f} 秒 | "
+                        f"{Path(filepath).name} | {duration:.1f} ? | "
                         f"{probe.width}x{probe.height} | {probe.fps:.2f} fps"
                     ),
                     120,
                 )
-            self._set_status("视频已载入，可以开始检测")
+            self._set_status("????????????")
         except Exception as exc:
-            self._set_compact_label(self.video_meta_label, f"读取视频失败: {exc}")
+            self._set_compact_label(self.video_meta_label, f"??????: {exc}")
             if hasattr(self, "top_context_label"):
-                self._set_compact_label(self.top_context_label, "视频读取失败")
-            self._set_status("视频读取失败")
+                self._set_compact_label(self.top_context_label, "??????")
+            self._set_status("??????")
 
     def process_video(self):
         if not self.video_path:
-            self._set_status("请先选择视频文件")
+            self._set_status("????????")
             return
 
         self.progress_bar.setValue(0)
         self.process_btn.setEnabled(False)
-        self._set_status("正在检测镜头并筛选关键帧...")
+        self._set_status("????????????...")
         self._clear_results(keep_video=True)
 
         self.thread = ProcessingThread(
@@ -1075,7 +1075,8 @@ class MainWindow(QMainWindow):
             "histogram_threshold": self.histogram_threshold_spin.value(),
             "min_scene_len_seconds": self.min_scene_len_spin.value(),
             "histogram_enabled": True,
-            "analysis_width": 320,
+            "analysis_width": 240,
+            "analysis_frame_step": 5,
             "merge_similar_shots": merge_strength > 0,
             "merge_similarity_threshold": self._merge_threshold_from_slider(merge_strength),
             "merge_max_shot_seconds": 1.0,
@@ -1104,11 +1105,11 @@ class MainWindow(QMainWindow):
         self.min_scene_len_spin.setValue(round(min_scene_len, 2))
 
         if value >= 75:
-            label = "偏灵敏"
+            label = "???"
         elif value <= 40:
-            label = "偏保守"
+            label = "???"
         else:
-            label = "平衡"
+            label = "??"
         self.sensitivity_value_label.setText(f"{label} {value}")
 
     def _merge_threshold_from_slider(self, value: int) -> float:
@@ -1119,13 +1120,13 @@ class MainWindow(QMainWindow):
     def update_merge_label(self, value: int):
         value = max(0, min(100, int(value)))
         if value <= 0:
-            text = "关闭"
+            text = "??"
         elif value <= 40:
-            text = f"标准 {value}"
+            text = f"?? {value}"
         elif value <= 70:
-            text = f"偏强 {value}"
+            text = f"?? {value}"
         else:
-            text = f"强力 {value}"
+            text = f"?? {value}"
         self.merge_value_label.setText(text)
 
     def _config_dir(self) -> Path:
@@ -1150,7 +1151,7 @@ class MainWindow(QMainWindow):
         total_size = self._directory_size(self._project_cache_dir()) + self._directory_size(
             self._feature_cache_dir()
         )
-        self.cache_label.setText(f"缓存占用：{self._format_bytes(total_size)}")
+        self.cache_label.setText(f"?????{self._format_bytes(total_size)}")
 
     def _directory_size(self, path: Path) -> int:
         if not path.exists():
@@ -1174,7 +1175,7 @@ class MainWindow(QMainWindow):
 
     def clear_current_video_cache(self):
         if not self.video_path:
-            self._set_status("请先选择视频")
+            self._set_status("??????")
             return
         deleted = 0
         try:
@@ -1185,21 +1186,22 @@ class MainWindow(QMainWindow):
             feature_path = feature_cache_path(
                 str(self._feature_cache_dir()),
                 self.video_path,
-                320,
+                240,
+                5,
             )
             if feature_path.exists():
                 feature_path.unlink()
                 deleted += 1
             self.update_cache_label()
-            self._set_status(f"已清除当前视频缓存 {deleted} 个文件")
+            self._set_status(f"????????? {deleted} ???")
         except Exception as exc:
-            QMessageBox.warning(self, "清除缓存失败", str(exc))
+            QMessageBox.warning(self, "??????", str(exc))
 
     def clear_all_cache(self):
         reply = QMessageBox.question(
             self,
-            "清除全部缓存",
-            "确定清除全部检测缓存和特征缓存吗？不会删除参数设置和原视频。",
+            "??????",
+            "??????????????????????????????",
             QMessageBox.Yes | QMessageBox.No,
             QMessageBox.No,
         )
@@ -1212,9 +1214,9 @@ class MainWindow(QMainWindow):
                     shutil.rmtree(path)
                 path.mkdir(parents=True, exist_ok=True)
             self.update_cache_label()
-            self._set_status("全部缓存已清除")
+            self._set_status("???????")
         except Exception as exc:
-            QMessageBox.warning(self, "清除缓存失败", str(exc))
+            QMessageBox.warning(self, "??????", str(exc))
 
     def open_cache_folder(self):
         path = self._config_dir()
@@ -1222,16 +1224,16 @@ class MainWindow(QMainWindow):
         try:
             if os.name == "nt":
                 os.startfile(str(path))
-                self._set_path_status("已打开缓存文件夹", path)
+                self._set_path_status("????????", path)
             else:
-                QMessageBox.information(self, "缓存文件夹", str(path))
+                QMessageBox.information(self, "?????", str(path))
         except Exception as exc:
-            QMessageBox.warning(self, "打开缓存文件夹失败", str(exc))
+            QMessageBox.warning(self, "?????????", str(exc))
 
     def clear_current_results(self):
         self._clear_results(keep_video=True)
         gc.collect()
-        self._set_status("当前检测结果已清空")
+        self._set_status("?????????")
 
     def _video_signature(self, filepath: str) -> dict:
         path = Path(filepath)
@@ -1301,16 +1303,16 @@ class MainWindow(QMainWindow):
 
     def export_project_file(self):
         if not self.video_path or not self.shots:
-            self._set_status("请先处理视频，再保存检测结果")
+            self._set_status("??????????????")
             return
 
         video_name = self._safe_folder_name(Path(self.video_path).stem)
         default_name = f"{video_name}_shot_project_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
         filepath, _ = QFileDialog.getSaveFileName(
             self,
-            "保存检测结果",
+            "??????",
             default_name,
-            "JSON 文件 (*.json);;所有文件 (*)",
+            "JSON ?? (*.json);;???? (*)",
         )
         if not filepath:
             return
@@ -1322,16 +1324,16 @@ class MainWindow(QMainWindow):
                 json.dumps(self._current_project_payload(), indent=2, ensure_ascii=False),
                 encoding="utf-8",
             )
-            self._set_path_status("检测结果已保存", path)
+            self._set_path_status("???????", path)
         except Exception as exc:
-            QMessageBox.warning(self, "保存检测结果失败", str(exc))
+            QMessageBox.warning(self, "????????", str(exc))
 
     def import_project_file(self):
         filepath, _ = QFileDialog.getOpenFileName(
             self,
-            "导入检测结果",
+            "??????",
             "",
-            "JSON 文件 (*.json);;所有文件 (*)",
+            "JSON ?? (*.json);;???? (*)",
         )
         if not filepath:
             return
@@ -1351,18 +1353,18 @@ class MainWindow(QMainWindow):
                     self._clear_results()
                     self._load_video_info(payload_video_path)
                 else:
-                    QMessageBox.warning(self, "导入检测结果失败", "请先选择原视频文件")
+                    QMessageBox.warning(self, "????????", "?????????")
                     return
 
             if not self._project_matches_current_video(payload):
-                QMessageBox.warning(self, "导入检测结果失败", "检测结果与当前视频不匹配")
+                QMessageBox.warning(self, "????????", "????????????")
                 return
 
             self._apply_project_payload(payload)
             self._save_project_cache()
-            self._set_path_status("检测结果已导入", filepath)
+            self._set_path_status("???????", filepath)
         except Exception as exc:
-            QMessageBox.warning(self, "导入检测结果失败", str(exc))
+            QMessageBox.warning(self, "????????", str(exc))
 
     def _project_matches_current_video(self, payload: dict) -> bool:
         expected = payload.get("video_signature") or {}
@@ -1384,18 +1386,18 @@ class MainWindow(QMainWindow):
             payload = json.loads(path.read_text(encoding="utf-8"))
             self._apply_project_payload(payload)
             self._set_status(
-                f"已加载检测缓存：{len(self.shots)} 个镜头，可直接预览和导出"
+                f"????????{len(self.shots)} ????????????"
             )
             return True
         except Exception as exc:
-            self._set_status(f"检测缓存读取失败，可重新检测: {exc}")
+            self._set_status(f"??????????????: {exc}")
             return False
 
     def _apply_project_payload(self, payload: dict):
         shots = payload.get("shots") or []
         selected_frames = payload.get("selected_frames") or []
         if not shots:
-            raise ValueError("缓存中没有镜头数据")
+            raise ValueError("?????????")
 
         self.shots = [(int(start), int(end)) for start, end in shots]
         self.selected_frames = [
@@ -1416,7 +1418,7 @@ class MainWindow(QMainWindow):
         self._populate_frame_grid()
         keyframe_count = sum(len(frames) for frames in self.selected_frames)
         self.summary_label.setText(
-            f"已加载缓存：{len(self.shots)} 个镜头，{keyframe_count} 帧"
+            f"??????{len(self.shots)} ????{keyframe_count} ?"
         )
 
         first_frame = self._first_selected_frame()
@@ -1508,32 +1510,32 @@ class MainWindow(QMainWindow):
             return
         try:
             self._apply_config(self._read_config(path))
-            self._set_status("已载入默认参数")
+            self._set_status("???????")
         except Exception as exc:
-            self._set_status(f"默认参数读取失败: {exc}")
+            self._set_status(f"????????: {exc}")
 
     def save_current_config(self):
         try:
             path = self._saved_config_path()
             self._write_config(path)
-            self._set_path_status("参数已保存", path)
+            self._set_path_status("?????", path)
         except Exception as exc:
-            QMessageBox.warning(self, "保存参数失败", str(exc))
+            QMessageBox.warning(self, "??????", str(exc))
 
     def set_default_config(self):
         try:
             self._write_config(self._default_config_path())
-            self._set_status("已设为默认参数，下次启动会自动使用")
+            self._set_status("?????????????????")
         except Exception as exc:
-            QMessageBox.warning(self, "设置默认失败", str(exc))
+            QMessageBox.warning(self, "??????", str(exc))
 
     def export_config(self):
         default_name = f"VideoFrameExtractor-settings-{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
         filepath, _ = QFileDialog.getSaveFileName(
             self,
-            "导出参数",
+            "????",
             default_name,
-            "JSON 文件 (*.json);;所有文件 (*)",
+            "JSON ?? (*.json);;???? (*)",
         )
         if not filepath:
             return
@@ -1542,24 +1544,24 @@ class MainWindow(QMainWindow):
             if path.suffix.lower() != ".json":
                 path = path.with_suffix(".json")
             self._write_config(path)
-            self._set_path_status("参数已导出", path)
+            self._set_path_status("?????", path)
         except Exception as exc:
-            QMessageBox.warning(self, "导出参数失败", str(exc))
+            QMessageBox.warning(self, "??????", str(exc))
 
     def import_config(self):
         filepath, _ = QFileDialog.getOpenFileName(
             self,
-            "导入参数",
+            "????",
             "",
-            "JSON 文件 (*.json);;所有文件 (*)",
+            "JSON ?? (*.json);;???? (*)",
         )
         if not filepath:
             return
         try:
             self._apply_config(self._read_config(Path(filepath)))
-            self._set_path_status("参数已导入", filepath)
+            self._set_path_status("?????", filepath)
         except Exception as exc:
-            QMessageBox.warning(self, "导入参数失败", str(exc))
+            QMessageBox.warning(self, "??????", str(exc))
 
     def apply_detection_preset(self, _index=None):
         preset = self.preset_combo.currentData()
@@ -1592,7 +1594,7 @@ class MainWindow(QMainWindow):
         self.merge_slider.setValue(config["merge"])
         self.update_merge_label(config["merge"])
         if hasattr(self, "status_label"):
-            self._set_status("已应用检测预设")
+            self._set_status("???????")
 
     def on_processing_finished(self, shots, selected_frames, metrics):
         self.process_btn.setEnabled(True)
@@ -1606,20 +1608,20 @@ class MainWindow(QMainWindow):
 
         source_counts = metrics.get("cut_sources", {})
         source_text = (
-            f"内容 {source_counts.get('content', 0)} | "
-            f"自适应 {source_counts.get('adaptive', 0)} | "
-            f"差异 {source_counts.get('histogram', 0)}"
+            f"?? {source_counts.get('content', 0)} | "
+            f"??? {source_counts.get('adaptive', 0)} | "
+            f"?? {source_counts.get('histogram', 0)}"
         )
         self.summary_label.setText(
-            f"检测到 {len(shots)} 个镜头，选出 {metrics.get('keyframe_count', 0)} 帧"
+            f"??? {len(shots)} ?????? {metrics.get('keyframe_count', 0)} ?"
         )
-        status_text = f"处理完成。候选切点: {source_text}"
+        status_text = f"?????????: {source_text}"
         if metrics.get("similar_merge_count", 0):
             status_text = (
-                f"{status_text} | 已合并相似镜头 {metrics['similar_merge_count']} 个"
+                f"{status_text} | ??????? {metrics['similar_merge_count']} ?"
             )
         if metrics.get("feature_cache_used"):
-            status_text = f"{status_text} | 已使用特征缓存"
+            status_text = f"{status_text} | ???????"
 
         first_frame = self._first_selected_frame()
         if first_frame is not None:
@@ -1629,14 +1631,14 @@ class MainWindow(QMainWindow):
 
         cache_path = self._save_project_cache()
         if cache_path:
-            status_text = f"{status_text} | 检测结果已缓存"
+            status_text = f"{status_text} | ???????"
         self._set_status(status_text)
         self.update_cache_label()
 
     def on_processing_error(self, error_msg):
         self.process_btn.setEnabled(True)
-        self._set_status(f"处理失败: {error_msg}")
-        QMessageBox.warning(self, "处理失败", error_msg)
+        self._set_status(f"????: {error_msg}")
+        QMessageBox.warning(self, "????", error_msg)
 
     def _populate_shot_list(self):
         self.shot_list.clear()
@@ -1647,7 +1649,7 @@ class MainWindow(QMainWindow):
             duration = ((end - start + 1) / fps) if fps > 0 else 0
             frame_text = ", ".join(str(frame) for frame in frames)
             item = QListWidgetItem(
-                f"{index + 1:03d} | {start}-{end} | {duration:.2f}s | 帧 {frame_text}"
+                f"{index + 1:03d} | {start}-{end} | {duration:.2f}s | ? {frame_text}"
             )
             item.setData(Qt.UserRole, index)
             self.shot_list.addItem(item)
@@ -1666,7 +1668,7 @@ class MainWindow(QMainWindow):
                     pixmap = self._frame_to_pixmap(frame, 160, 90)
                     item = QListWidgetItem(
                         QIcon(pixmap),
-                        f"镜头 {shot_idx + 1}\n帧 {frame_idx}",
+                        f"?? {shot_idx + 1}\n? {frame_idx}",
                     )
                     item.setData(Qt.UserRole, (shot_idx, keyframe_idx, frame_idx))
                     self.frame_grid.addItem(item)
@@ -1712,15 +1714,15 @@ class MainWindow(QMainWindow):
         bounds = self._active_shot_bounds()
         if bounds:
             start, end = bounds
-            label = f"镜头 {self.active_shot_idx + 1}: {start}-{end}"
+            label = f"?? {self.active_shot_idx + 1}: {start}-{end}"
         else:
             total = int(self.video_info.get("total_frames") or 0)
             if total <= 0:
                 self.frame_slider.setEnabled(False)
-                self.shot_range_label.setText("当前镜头范围")
+                self.shot_range_label.setText("??????")
                 return
             start, end = 0, total - 1
-            label = f"全片: {start}-{end}"
+            label = f"??: {start}-{end}"
 
         self.frame_slider.blockSignals(True)
         self.frame_slider.setEnabled(True)
@@ -1753,7 +1755,7 @@ class MainWindow(QMainWindow):
             or self.active_shot_idx >= len(self.selected_frames)
             or self.active_keyframe_idx >= len(self.selected_frames[self.active_shot_idx])
         ):
-            self._set_status("请先在缩略图或镜头列表中选择一个关键帧")
+            self._set_status("???????????????????")
             return
 
         self.selected_frames[self.active_shot_idx][self.active_keyframe_idx] = self.current_frame_idx
@@ -1764,7 +1766,7 @@ class MainWindow(QMainWindow):
         self._save_project_cache()
         self.update_cache_label()
         self._set_status(
-            f"已更新镜头 {self.active_shot_idx + 1} 的关键帧为 {self.current_frame_idx}"
+            f"????? {self.active_shot_idx + 1} ????? {self.current_frame_idx}"
         )
 
     def show_frame(self, frame_idx: int):
@@ -1789,7 +1791,7 @@ class MainWindow(QMainWindow):
             self._sync_frame_slider(frame_idx)
             self._update_frame_info(frame_idx)
         except Exception as exc:
-            self._set_status(f"预览失败: {exc}")
+            self._set_status(f"????: {exc}")
 
     def _update_frame_info(self, frame_idx: int):
         fps = float(self.video_info.get("fps") or 0)
@@ -1797,8 +1799,8 @@ class MainWindow(QMainWindow):
         shot_text = ""
         if self.active_shot_idx is not None and self.active_shot_idx < len(self.shots):
             start, end = self.shots[self.active_shot_idx]
-            shot_text = f" | 镜头 {self.active_shot_idx + 1}: {start}-{end}"
-        self.frame_info_label.setText(f"帧 {frame_idx} | {seconds:.2f} 秒{shot_text}")
+            shot_text = f" | ?? {self.active_shot_idx + 1}: {start}-{end}"
+        self.frame_info_label.setText(f"? {frame_idx} | {seconds:.2f} ?{shot_text}")
 
     def _frame_to_pixmap(self, frame, max_width: int, max_height: int) -> QPixmap:
         frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
@@ -1860,22 +1862,22 @@ class MainWindow(QMainWindow):
     def export_current_edge_frames(self):
         shot_idx = self._active_or_selected_shot_idx()
         if shot_idx is None:
-            self._set_status("请先选择一个镜头")
+            self._set_status("????????")
             return
         self._export_edge_frames([shot_idx], "current")
 
     def export_all_edge_frames(self):
         if not self.shots:
-            self._set_status("请先处理视频")
+            self._set_status("??????")
             return
         self._export_edge_frames(list(range(len(self.shots))), "all")
 
     def _export_edge_frames(self, shot_indices, scope: str):
         if not self.video_path or not self.shots:
-            self._set_status("请先处理视频")
+            self._set_status("??????")
             return
 
-        parent_dir = QFileDialog.getExistingDirectory(self, "选择导出位置")
+        parent_dir = QFileDialog.getExistingDirectory(self, "??????")
         if not parent_dir:
             return
 
@@ -1937,17 +1939,17 @@ class MainWindow(QMainWindow):
                 "shots": exported_shots,
             }
             saver.save_metadata(metadata)
-            self._set_path_status("首尾帧已导出到", output_dir)
+            self._set_path_status("???????", output_dir)
         except Exception as exc:
-            self._set_status(f"首尾帧导出失败: {exc}")
-            QMessageBox.warning(self, "首尾帧导出失败", str(exc))
+            self._set_status(f"???????: {exc}")
+            QMessageBox.warning(self, "???????", str(exc))
 
     def export_dataset(self):
         if not self.selected_frames:
-            self._set_status("请先处理视频")
+            self._set_status("??????")
             return
 
-        parent_dir = QFileDialog.getExistingDirectory(self, "选择导出位置")
+        parent_dir = QFileDialog.getExistingDirectory(self, "??????")
         if not parent_dir:
             return
 
@@ -1987,20 +1989,20 @@ class MainWindow(QMainWindow):
             }
             saver.save_metadata(metadata)
 
-            self._set_path_status("数据集已导出到", output_dir)
+            self._set_path_status("???????", output_dir)
         except Exception as exc:
-            self._set_status(f"导出失败: {exc}")
-            QMessageBox.warning(self, "导出失败", str(exc))
+            self._set_status(f"????: {exc}")
+            QMessageBox.warning(self, "????", str(exc))
 
     def export_shot_videos(self):
         if not self.video_path or not self.shots:
-            self._set_status("请先处理视频")
+            self._set_status("??????")
             return
         if self.export_thread is not None and self.export_thread.isRunning():
-            self._set_status("分镜视频正在导出")
+            self._set_status("????????")
             return
 
-        parent_dir = QFileDialog.getExistingDirectory(self, "选择导出位置")
+        parent_dir = QFileDialog.getExistingDirectory(self, "??????")
         if not parent_dir:
             return
 
@@ -2011,9 +2013,9 @@ class MainWindow(QMainWindow):
         self._set_video_export_running(True)
 
         if mode == "copy" and not ffmpeg_executable():
-            self._set_status("未找到 ffmpeg，将使用精确重编码导出视频")
+            self._set_status("??? ffmpeg?????????????")
         else:
-            self._set_status("正在导出分镜视频...")
+            self._set_status("????????...")
 
         self.export_thread = VideoExportThread(
             self.video_path,
@@ -2047,24 +2049,24 @@ class MainWindow(QMainWindow):
         count = metadata.get("total_shots", 0)
         actual_mode = metadata.get("actual_mode", "")
         if actual_mode == "opencv_reencode":
-            mode_text = "精确重编码"
+            mode_text = "?????"
         elif actual_mode == "copy":
-            mode_text = "快速原流"
+            mode_text = "????"
         else:
-            mode_text = "高质量重编码"
-        self._set_path_status(f"分镜视频已导出 {count} 个（{mode_text}）到", output_dir)
+            mode_text = "??????"
+        self._set_path_status(f"??????? {count} ??{mode_text}??", output_dir)
 
     def on_video_export_error(self, error_msg: str):
         self._set_video_export_running(False)
         self.export_thread = None
-        self._set_status(f"分镜视频导出失败: {error_msg}")
-        QMessageBox.warning(self, "分镜视频导出失败", error_msg)
+        self._set_status(f"????????: {error_msg}")
+        QMessageBox.warning(self, "????????", error_msg)
 
     def show_account_placeholder(self):
         QMessageBox.information(
             self,
-            "账号与订阅",
-            "账号、注册和订阅入口已经预留在界面中。下一步可以接入后端鉴权、套餐权限和支付回调。",
+            "?????",
+            "?????????????????????????????????????????",
         )
 
     def _first_selected_frame(self):
@@ -2081,15 +2083,15 @@ class MainWindow(QMainWindow):
         self.current_frame_idx = None
         self.shot_list.clear()
         self.frame_grid.clear()
-        self.summary_label.setText("还没有检测结果")
-        self.frame_info_label.setText("帧信息")
-        self.shot_range_label.setText("当前镜头范围")
+        self.summary_label.setText("???????")
+        self.frame_info_label.setText("???")
+        self.shot_range_label.setText("??????")
         self.frame_slider.blockSignals(True)
         self.frame_slider.setRange(0, 0)
         self.frame_slider.setEnabled(False)
         self.frame_slider.blockSignals(False)
         self.preview_label.setPixmap(QPixmap())
-        self.preview_label.setText("选择视频并开始检测")
+        self.preview_label.setText("?????????")
         if not keep_video:
             self.progress_bar.setValue(0)
 

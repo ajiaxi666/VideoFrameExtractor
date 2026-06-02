@@ -23,7 +23,8 @@ class ShotDetectionSettings:
     histogram_threshold: float = 0.16
     min_scene_len_seconds: float = 0.35
     histogram_enabled: bool = True
-    analysis_width: int = 320
+    analysis_width: int = 240
+    analysis_frame_step: int = 5
     merge_similar_shots: bool = True
     merge_similarity_threshold: float = 0.08
     merge_max_shot_seconds: float = 1.0
@@ -45,7 +46,8 @@ class ShotDetector:
         histogram_threshold: float = 0.16,
         min_scene_len_seconds: float = 0.35,
         histogram_enabled: bool = True,
-        analysis_width: int = 320,
+        analysis_width: int = 240,
+        analysis_frame_step: int = 5,
         merge_similar_shots: bool = True,
         merge_similarity_threshold: float = 0.08,
         merge_max_shot_seconds: float = 1.0,
@@ -68,6 +70,7 @@ class ShotDetector:
             min_scene_len_seconds=min_scene_len_seconds,
             histogram_enabled=histogram_enabled,
             analysis_width=analysis_width,
+            analysis_frame_step=max(1, int(analysis_frame_step)),
             merge_similar_shots=merge_similar_shots,
             merge_similarity_threshold=merge_similarity_threshold,
             merge_max_shot_seconds=merge_max_shot_seconds,
@@ -109,6 +112,7 @@ class ShotDetector:
                 total_frames,
                 fps,
                 self.settings.analysis_width,
+                self.settings.analysis_frame_step,
             )
 
         if features is not None:
@@ -156,56 +160,12 @@ class ShotDetector:
         progress_callback: Optional[Callable[[int], None]],
         feature_cache: FeatureCache,
     ) -> List[int]:
-        cuts_by_source = {
-            "content": [],
-            "adaptive": [],
-            "histogram": [],
-        }
-        pyscene_detectors = []
-        if mode in {"content", "hybrid"}:
-            pyscene_detectors.append(
-                (
-                    "content",
-                    ContentDetector(
-                        threshold=self.settings.content_threshold,
-                        min_scene_len=min_scene_len,
-                    ),
-                )
-            )
-
-        if mode in {"adaptive", "hybrid"}:
-            pyscene_detectors.append(
-                (
-                    "adaptive",
-                    AdaptiveDetector(
-                        adaptive_threshold=self.settings.adaptive_threshold,
-                        min_scene_len=min_scene_len,
-                    ),
-                )
-            )
-
-        feature_payload = self._detect_with_pyscenedetect_detectors(
+        features = self._collect_sampled_features(
             video_path=video_path,
-            detectors=pyscene_detectors,
             total_frames=total_frames,
             fps=fps,
             progress_callback=progress_callback,
-            collect_scores=True,
         )
-        pyscene_results = feature_payload["cuts"]
-        features = feature_payload["features"]
-
-        for name, detector_cuts in pyscene_results.items():
-            self.last_cut_candidates[name] = detector_cuts
-            cuts_by_source[name] = detector_cuts
-
-        if self.settings.histogram_enabled and mode in {"histogram", "hybrid"}:
-            histogram_cuts = self._detect_histogram_from_scores(
-                features["histogram_scores"],
-                min_scene_len,
-            )
-            self.last_cut_candidates["histogram"] = histogram_cuts
-            cuts_by_source["histogram"] = histogram_cuts
 
         if self.settings.feature_cache_enabled:
             saved_path = feature_cache.save(
@@ -213,16 +173,19 @@ class ShotDetector:
                 total_frames=total_frames,
                 fps=fps,
                 analysis_width=self.settings.analysis_width,
+                analysis_frame_step=self.settings.analysis_frame_step,
                 content_scores=features["content_scores"],
                 histogram_scores=features["histogram_scores"],
+                sampled_frames=features["sampled_frames"],
             )
             self.feature_cache_path = str(saved_path) if saved_path else None
 
-        return self._filter_cut_candidates(
-            cuts_by_source,
-            features["content_scores"],
-            features["histogram_scores"],
-            mode,
+        cuts = self._cuts_from_features(features, min_scene_len, mode)
+        return self._refine_sampled_cuts(
+            video_path,
+            cuts,
+            total_frames,
+            self.settings.analysis_frame_step,
         )
 
     def _cuts_from_features(self, features: dict, min_scene_len: int, mode: str) -> List[int]:
@@ -233,22 +196,34 @@ class ShotDetector:
         }
         content_scores = features["content_scores"]
         histogram_scores = features["histogram_scores"]
+        sampled_frames = features.get("sampled_frames")
+        content_threshold, adaptive_threshold, histogram_threshold = self._thresholds_for_features(
+            features
+        )
 
         if mode in {"content", "hybrid"}:
             content_cuts = self._detect_content_from_scores(
                 content_scores,
-                self.settings.content_threshold,
+                content_threshold,
                 min_scene_len,
             )
             self.last_cut_candidates["content"] = content_cuts
             cuts_by_source["content"] = content_cuts
 
         if mode in {"adaptive", "hybrid"}:
-            adaptive_cuts = self._detect_adaptive_from_scores(
-                content_scores,
-                self.settings.adaptive_threshold,
-                min_scene_len,
-            )
+            if sampled_frames is not None and len(sampled_frames) > 0:
+                adaptive_cuts = self._detect_adaptive_from_sampled_scores(
+                    content_scores,
+                    sampled_frames,
+                    adaptive_threshold,
+                    min_scene_len,
+                )
+            else:
+                adaptive_cuts = self._detect_adaptive_from_scores(
+                    content_scores,
+                    adaptive_threshold,
+                    min_scene_len,
+                )
             self.last_cut_candidates["adaptive"] = adaptive_cuts
             cuts_by_source["adaptive"] = adaptive_cuts
 
@@ -256,6 +231,7 @@ class ShotDetector:
             histogram_cuts = self._detect_histogram_from_scores(
                 histogram_scores,
                 min_scene_len,
+                histogram_threshold,
             )
             self.last_cut_candidates["histogram"] = histogram_cuts
             cuts_by_source["histogram"] = histogram_cuts
@@ -265,6 +241,8 @@ class ShotDetector:
             content_scores,
             histogram_scores,
             mode,
+            content_threshold,
+            histogram_threshold,
         )
 
     def _filter_cut_candidates(
@@ -273,6 +251,8 @@ class ShotDetector:
         content_scores,
         histogram_scores,
         mode: str,
+        content_threshold: float,
+        histogram_threshold: float,
     ) -> List[int]:
         cuts = sorted(
             set(
@@ -290,8 +270,8 @@ class ShotDetector:
 
         content_scores = np.asarray(content_scores, dtype=np.float32)
         histogram_scores = np.asarray(histogram_scores, dtype=np.float32)
-        histogram_threshold = float(self.settings.histogram_threshold)
-        content_threshold = float(self.settings.content_threshold)
+        histogram_threshold = float(histogram_threshold)
+        content_threshold = float(content_threshold)
         strong_content_threshold = content_threshold * 1.8
         histogram_support_threshold = histogram_threshold * 0.55
         tolerance = 2
@@ -320,6 +300,18 @@ class ShotDetector:
 
         return filtered
 
+    def _thresholds_for_features(self, features: dict) -> Tuple[float, float, float]:
+        sample_step = int(features.get("sample_step") or self.settings.analysis_frame_step)
+        sampled_frames = features.get("sampled_frames")
+        is_sampled = sampled_frames is not None and len(sampled_frames) > 0 and sample_step > 1
+        threshold_scale = max(1.0, sample_step / 2.0) if is_sampled else 1.0
+        adaptive_scale = 1.0 + (threshold_scale - 1.0) * 0.4
+        return (
+            float(self.settings.content_threshold) * threshold_scale,
+            float(self.settings.adaptive_threshold) * adaptive_scale,
+            float(self.settings.histogram_threshold) * threshold_scale,
+        )
+
     def _score_at(self, scores, frame_idx: int) -> float:
         if frame_idx < 0 or frame_idx >= len(scores):
             return 0.0
@@ -328,7 +320,7 @@ class ShotDetector:
     def _probe_video(self, video_path: str) -> Tuple[int, float]:
         cap = cv2.VideoCapture(video_path)
         if not cap.isOpened():
-            raise ValueError(f"无法打开视频文件: {video_path}")
+            raise ValueError(f"????????: {video_path}")
         total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
         fps = float(cap.get(cv2.CAP_PROP_FPS) or 25.0)
         cap.release()
@@ -343,6 +335,70 @@ class ShotDetector:
             cuts.append(scene_start.get_frames())
         return cuts
 
+    def _collect_sampled_features(
+        self,
+        video_path: str,
+        total_frames: int,
+        fps: float,
+        progress_callback: Optional[Callable[[int], None]] = None,
+    ) -> dict:
+        """Collect low-resolution frame-difference features without retrieving every 4K frame."""
+        cap = cv2.VideoCapture(video_path)
+        if not cap.isOpened():
+            raise ValueError(f"????????: {video_path}")
+
+        step = max(1, int(self.settings.analysis_frame_step))
+        content_scores = np.zeros(total_frames, dtype=np.float32)
+        histogram_scores = np.zeros(total_frames, dtype=np.float32)
+        sampled_frames: List[int] = []
+        previous_hist = None
+        previous_gray = None
+        previous_content_channels = None
+        frame_idx = -1
+        last_reported = 5
+
+        try:
+            while True:
+                if not cap.grab():
+                    break
+                frame_idx += 1
+                should_sample = frame_idx % step == 0 or frame_idx >= total_frames - 1
+
+                if should_sample:
+                    ret, frame = cap.retrieve()
+                    if not ret:
+                        break
+                    analysis_frame = self._resize_for_analysis(frame)
+                    content_score, previous_content_channels = self._content_score_for_frame(
+                        analysis_frame,
+                        previous_content_channels,
+                        already_resized=True,
+                    )
+                    hist_score, previous_hist, previous_gray = self._histogram_score_for_frame(
+                        analysis_frame,
+                        previous_hist,
+                        previous_gray,
+                        already_resized=True,
+                    )
+                    content_scores[frame_idx] = content_score
+                    histogram_scores[frame_idx] = hist_score
+                    sampled_frames.append(frame_idx)
+
+                if progress_callback and total_frames > 0:
+                    pct = 5 + int((frame_idx / total_frames) * 30)
+                    if pct > last_reported:
+                        progress_callback(min(pct, 35))
+                        last_reported = pct
+        finally:
+            cap.release()
+
+        return {
+            "content_scores": content_scores,
+            "histogram_scores": histogram_scores,
+            "sampled_frames": np.asarray(sampled_frames, dtype=np.int32),
+            "sample_step": step,
+        }
+
     def _detect_with_pyscenedetect_detectors(
         self,
         video_path: str,
@@ -355,17 +411,17 @@ class ShotDetector:
         """Run multiple PySceneDetect detectors in a single decode pass."""
         cap = cv2.VideoCapture(video_path)
         if not cap.isOpened():
-            raise ValueError(f"鏃犳硶鎵撳紑瑙嗛鏂囦欢: {video_path}")
+            raise ValueError(f"????????????: {video_path}")
 
         results = {name: [] for name, _detector in detectors}
         content_scores = np.zeros(total_frames, dtype=np.float32)
         histogram_scores = np.zeros(total_frames, dtype=np.float32)
-        feature_detector = ContentDetector()
         frame_idx = -1
         last_reported = 5
         fps = fps or 25.0
         previous_hist = None
         previous_gray = None
+        previous_content_channels = None
 
         try:
             while True:
@@ -374,18 +430,30 @@ class ShotDetector:
                     break
 
                 frame_idx += 1
+                analysis_frame = self._resize_for_analysis(frame)
                 timecode = FrameTimecode(frame_idx, fps)
+                content_score = None
                 for name, detector in detectors:
-                    for cut in detector.process_frame(timecode, frame):
+                    for cut in detector.process_frame(timecode, analysis_frame):
                         results[name].append(self._frame_num(cut))
+                    if collect_scores and content_score is None:
+                        detector_score = getattr(detector, "_frame_score", None)
+                        if detector_score is not None:
+                            content_score = float(detector_score or 0.0)
 
                 if collect_scores and frame_idx < total_frames:
-                    feature_detector.process_frame(timecode, frame)
-                    content_scores[frame_idx] = float(feature_detector._frame_score or 0.0)
+                    if content_score is None:
+                        content_score, previous_content_channels = self._content_score_for_frame(
+                            analysis_frame,
+                            previous_content_channels,
+                            already_resized=True,
+                        )
+                    content_scores[frame_idx] = content_score
                     hist_score, previous_hist, previous_gray = self._histogram_score_for_frame(
-                        frame,
+                        analysis_frame,
                         previous_hist,
                         previous_gray,
+                        already_resized=True,
                     )
                     histogram_scores[frame_idx] = hist_score
 
@@ -420,8 +488,32 @@ class ShotDetector:
             return int(frame_num)
         return int(timecode.get_frames())
 
-    def _histogram_score_for_frame(self, frame, previous_hist, previous_gray):
-        small = self._resize_for_analysis(frame)
+    def _content_score_for_frame(self, frame, previous_channels, already_resized: bool = False):
+        small = frame if already_resized else self._resize_for_analysis(frame)
+        hue, sat, lum = cv2.split(cv2.cvtColor(small, cv2.COLOR_BGR2HSV))
+
+        if previous_channels is None:
+            return 0.0, (hue, sat, lum)
+
+        previous_hue, previous_sat, previous_lum = previous_channels
+        score = float(
+            (
+                np.mean(cv2.absdiff(hue, previous_hue))
+                + np.mean(cv2.absdiff(sat, previous_sat))
+                + np.mean(cv2.absdiff(lum, previous_lum))
+            )
+            / 3.0
+        )
+        return score, (hue, sat, lum)
+
+    def _histogram_score_for_frame(
+        self,
+        frame,
+        previous_hist,
+        previous_gray,
+        already_resized: bool = False,
+    ):
+        small = frame if already_resized else self._resize_for_analysis(frame)
         hsv = cv2.cvtColor(small, cv2.COLOR_BGR2HSV)
         hist = cv2.calcHist([hsv], [0, 1], None, [32, 32], [0, 180, 0, 256])
         cv2.normalize(hist, hist, alpha=0, beta=1, norm_type=cv2.NORM_MINMAX)
@@ -483,16 +575,63 @@ class ShotDetector:
                 last_cut = target_idx
         return cuts
 
+    def _detect_adaptive_from_sampled_scores(
+        self,
+        content_scores,
+        sampled_frames,
+        adaptive_threshold: float,
+        min_scene_len: int,
+    ) -> List[int]:
+        window_width = 2
+        min_content_val = 15.0
+        cuts: List[int] = []
+        last_cut = 0
+        sampled_frames = np.asarray(sampled_frames, dtype=np.int32)
+        scores = np.asarray(content_scores, dtype=np.float32)
+        if len(sampled_frames) < 1 + (2 * window_width):
+            return cuts
+
+        sampled_scores = np.asarray(
+            [self._score_at(scores, int(frame_idx)) for frame_idx in sampled_frames],
+            dtype=np.float32,
+        )
+        for sample_pos in range(window_width, len(sampled_scores) - window_width):
+            target_score = float(sampled_scores[sample_pos])
+            window = np.concatenate(
+                (
+                    sampled_scores[sample_pos - window_width:sample_pos],
+                    sampled_scores[sample_pos + 1:sample_pos + window_width + 1],
+                )
+            )
+            average = float(np.mean(window)) if window.size else 0.0
+            if abs(average) < 0.00001:
+                adaptive_ratio = 255.0 if target_score >= min_content_val else 0.0
+            else:
+                adaptive_ratio = min(target_score / average, 255.0)
+
+            cut_frame = int(sampled_frames[sample_pos])
+            if (
+                adaptive_ratio >= adaptive_threshold
+                and target_score >= min_content_val
+                and cut_frame - last_cut >= min_scene_len
+            ):
+                cuts.append(cut_frame)
+                last_cut = cut_frame
+
+        return cuts
+
     def _detect_histogram_from_scores(
         self,
         histogram_scores,
         min_scene_len: int,
+        threshold: Optional[float] = None,
     ) -> List[int]:
         cuts: List[int] = []
         last_cut = -min_scene_len
+        threshold = self.settings.histogram_threshold if threshold is None else float(threshold)
         for frame_idx, score in enumerate(histogram_scores):
             if (
-                score >= self.settings.histogram_threshold
+                score >= threshold
                 and frame_idx - last_cut >= min_scene_len
             ):
                 cuts.append(frame_idx)
@@ -508,7 +647,7 @@ class ShotDetector:
     ) -> List[int]:
         cap = cv2.VideoCapture(video_path)
         if not cap.isOpened():
-            raise ValueError(f"无法打开视频文件: {video_path}")
+            raise ValueError(f"????????: {video_path}")
 
         cuts: List[int] = []
         previous_hist = None
@@ -563,37 +702,42 @@ class ShotDetector:
             self.similar_merge_count = 0
             return shots
 
-        cap = cv2.VideoCapture(video_path)
-        if not cap.isOpened():
+        threshold = max(0.0, float(self.settings.merge_similarity_threshold))
+        max_short_len = max(1, int(round(self.settings.merge_max_shot_seconds * fps)))
+        needed_frames = sorted(
+            set(
+                frame_idx
+                for start, end in shots
+                for frame_idx in (start, end)
+                if frame_idx >= 0
+            )
+        )
+        histograms = self._read_histograms_for_frames(video_path, needed_frames)
+        if not histograms:
             self.similar_merge_count = 0
             return shots
 
-        threshold = max(0.0, float(self.settings.merge_similarity_threshold))
-        max_short_len = max(1, int(round(self.settings.merge_max_shot_seconds * fps)))
         merged: List[Tuple[int, int]] = []
         current_start, current_end = shots[0]
         self.similar_merge_count = 0
 
-        try:
-            for next_start, next_end in shots[1:]:
-                current_len = current_end - current_start + 1
-                next_len = next_end - next_start + 1
-                should_check = min(current_len, next_len) <= max_short_len
+        for next_start, next_end in shots[1:]:
+            current_len = current_end - current_start + 1
+            next_len = next_end - next_start + 1
+            should_check = min(current_len, next_len) <= max_short_len
 
-                if should_check:
-                    current_frame = self._read_frame(cap, current_end)
-                    next_frame = self._read_frame(cap, next_start)
-                    if current_frame is not None and next_frame is not None:
-                        distance = self._histogram_distance(current_frame, next_frame)
-                        if distance <= threshold:
-                            current_end = next_end
-                            self.similar_merge_count += 1
-                            continue
+            if should_check:
+                current_hist = histograms.get(current_end)
+                next_hist = histograms.get(next_start)
+                if current_hist is not None and next_hist is not None:
+                    distance = self._histogram_distance_from_histograms(current_hist, next_hist)
+                    if distance <= threshold:
+                        current_end = next_end
+                        self.similar_merge_count += 1
+                        continue
 
-                merged.append((current_start, current_end))
-                current_start, current_end = next_start, next_end
-        finally:
-            cap.release()
+            merged.append((current_start, current_end))
+            current_start, current_end = next_start, next_end
 
         merged.append((current_start, current_end))
         return merged
@@ -606,6 +750,13 @@ class ShotDetector:
     def _histogram_distance(self, first: np.ndarray, second: np.ndarray) -> float:
         first_hist = self._hsv_histogram(first)
         second_hist = self._hsv_histogram(second)
+        return self._histogram_distance_from_histograms(first_hist, second_hist)
+
+    def _histogram_distance_from_histograms(
+        self,
+        first_hist: np.ndarray,
+        second_hist: np.ndarray,
+    ) -> float:
         return float(cv2.compareHist(first_hist, second_hist, cv2.HISTCMP_BHATTACHARYYA))
 
     def _hsv_histogram(self, frame: np.ndarray) -> np.ndarray:
@@ -615,6 +766,40 @@ class ShotDetector:
         cv2.normalize(hist, hist, alpha=0, beta=1, norm_type=cv2.NORM_MINMAX)
         return hist
 
+    def _read_histograms_for_frames(self, video_path: str, frame_indices) -> dict:
+        targets = sorted(set(int(frame_idx) for frame_idx in frame_indices if frame_idx >= 0))
+        if not targets:
+            return {}
+
+        cap = cv2.VideoCapture(video_path)
+        if not cap.isOpened():
+            return {}
+
+        histograms = {}
+        frame_idx = -1
+        target_pos = 0
+        try:
+            while target_pos < len(targets):
+                if not cap.grab():
+                    break
+                frame_idx += 1
+
+                while target_pos < len(targets) and targets[target_pos] < frame_idx:
+                    target_pos += 1
+                if target_pos >= len(targets):
+                    break
+                if targets[target_pos] != frame_idx:
+                    continue
+
+                ret, frame = cap.retrieve()
+                if ret:
+                    histograms[frame_idx] = self._hsv_histogram(frame)
+                target_pos += 1
+        finally:
+            cap.release()
+
+        return histograms
+
     def _resize_for_analysis(self, frame: np.ndarray) -> np.ndarray:
         width = frame.shape[1]
         target_width = max(160, int(self.settings.analysis_width))
@@ -623,6 +808,45 @@ class ShotDetector:
         scale = target_width / width
         target_height = max(1, int(frame.shape[0] * scale))
         return cv2.resize(frame, (target_width, target_height), interpolation=cv2.INTER_AREA)
+
+    def _refine_sampled_cuts(
+        self,
+        video_path: str,
+        cuts: List[int],
+        total_frames: int,
+        sample_step: int,
+    ) -> List[int]:
+        if not cuts or sample_step <= 1:
+            return cuts
+
+        windows = {}
+        needed_frames = set()
+        for cut in cuts:
+            start = max(1, int(cut) - int(sample_step) + 1)
+            end = min(total_frames - 1, int(cut) + 1)
+            windows[int(cut)] = (start, end)
+            needed_frames.update(range(start - 1, end + 1))
+
+        histograms = self._read_histograms_for_frames(video_path, needed_frames)
+        if not histograms:
+            return cuts
+
+        refined: List[int] = []
+        for cut, (start, end) in windows.items():
+            best_frame = int(cut)
+            best_score = -1.0
+            for frame_idx in range(start, end + 1):
+                previous_hist = histograms.get(frame_idx - 1)
+                current_hist = histograms.get(frame_idx)
+                if previous_hist is None or current_hist is None:
+                    continue
+                score = self._histogram_distance_from_histograms(previous_hist, current_hist)
+                if score > best_score:
+                    best_score = score
+                    best_frame = frame_idx
+            refined.append(best_frame)
+
+        return sorted(set(refined))
 
     def _merge_cuts(
         self,
