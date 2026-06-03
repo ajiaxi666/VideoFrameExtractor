@@ -1,0 +1,97 @@
+<svg width="1200" height="560" viewBox="0 0 1200 560" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">VideoFrameExtractor</title>
+  <desc id="desc">Windows local video shot detection and keyframe extraction workspace preview.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1200" y2="560" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#f8fbff"/>
+      <stop offset="0.55" stop-color="#eef5ff"/>
+      <stop offset="1" stop-color="#f8fafc"/>
+    </linearGradient>
+    <linearGradient id="blue" x1="224" y1="118" x2="940" y2="452" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#2f6df6"/>
+      <stop offset="1" stop-color="#16a3ff"/>
+    </linearGradient>
+    <filter id="shadow" x="70" y="60" width="1060" height="460" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="20" stdDeviation="24" flood-color="#0f172a" flood-opacity="0.16"/>
+    </filter>
+    <pattern id="grain" width="18" height="18" patternUnits="userSpaceOnUse">
+      <path d="M1 1h1v1H1zM11 4h1v1h-1zM6 14h1v1H6zM16 12h1v1h-1z" fill="#94a3b8" opacity="0.22"/>
+    </pattern>
+  </defs>
+
+  <rect width="1200" height="560" rx="32" fill="url(#bg)"/>
+  <rect width="1200" height="560" rx="32" fill="url(#grain)" opacity="0.28"/>
+
+  <g transform="translate(70 62)">
+    <text x="0" y="34" fill="#0f172a" font-family="Inter, Microsoft YaHei, Arial, sans-serif" font-size="18" font-weight="700" letter-spacing="3">VIDEO FRAME EXTRACTOR</text>
+    <text x="0" y="82" fill="#0f172a" font-family="Inter, Arial, sans-serif" font-size="48" font-weight="750">Shot Detection &amp; Keyframe Export</text>
+    <text x="0" y="119" fill="#475569" font-family="Inter, Arial, sans-serif" font-size="21">Local video workspace for shot review, keyframe selection, caching, and dataset export.</text>
+  </g>
+
+  <g filter="url(#shadow)" transform="translate(84 178)">
+    <rect width="1032" height="330" rx="22" fill="#ffffff"/>
+    <rect x="1" y="1" width="1030" height="328" rx="21" stroke="#dbe6f5"/>
+
+    <rect x="0" y="0" width="1032" height="46" rx="22" fill="#f8fafc"/>
+    <circle cx="28" cy="23" r="6" fill="#ef4444"/>
+    <circle cx="50" cy="23" r="6" fill="#f59e0b"/>
+    <circle cx="72" cy="23" r="6" fill="#22c55e"/>
+    <text x="94" y="29" fill="#334155" font-family="Inter, Microsoft YaHei, Arial, sans-serif" font-size="13" font-weight="700">v0.3.15 · Windows local workspace</text>
+
+    <g transform="translate(22 68)">
+      <rect width="596" height="206" rx="16" fill="#0f172a"/>
+      <rect x="16" y="16" width="564" height="174" rx="10" fill="url(#blue)" opacity="0.92"/>
+      <path d="M16 154 C88 118 132 128 194 98 C254 68 316 78 382 112 C448 146 505 98 580 60 V190 H16 Z" fill="#ffffff" opacity="0.18"/>
+      <rect x="42" y="42" width="88" height="124" rx="8" fill="#ffffff" opacity="0.16"/>
+      <rect x="146" y="34" width="88" height="132" rx="8" fill="#ffffff" opacity="0.22"/>
+      <rect x="250" y="58" width="88" height="108" rx="8" fill="#ffffff" opacity="0.18"/>
+      <rect x="354" y="28" width="88" height="138" rx="8" fill="#ffffff" opacity="0.24"/>
+      <rect x="458" y="48" width="88" height="118" rx="8" fill="#ffffff" opacity="0.2"/>
+      <text x="28" y="224" fill="#475569" font-family="Inter, Arial, sans-serif" font-size="14">Preview · frame slider · start / middle / end jumps</text>
+    </g>
+
+    <g transform="translate(650 68)">
+      <rect width="322" height="206" rx="16" fill="#f8fafc"/>
+      <rect x="1" y="1" width="320" height="204" rx="15" stroke="#e2e8f0"/>
+      <text x="22" y="34" fill="#0f172a" font-family="Inter, Arial, sans-serif" font-size="18" font-weight="750">Controls &amp; Export</text>
+
+      <text x="22" y="67" fill="#64748b" font-family="Inter, Arial, sans-serif" font-size="12" font-weight="700">SPLIT SENSITIVITY</text>
+      <rect x="22" y="79" width="278" height="8" rx="4" fill="#dbeafe"/>
+      <rect x="22" y="79" width="206" height="8" rx="4" fill="#2f6df6"/>
+      <circle cx="228" cy="83" r="11" fill="#2f6df6"/>
+
+      <text x="22" y="119" fill="#64748b" font-family="Inter, Arial, sans-serif" font-size="12" font-weight="700">KEYFRAMES PER SHOT</text>
+      <rect x="22" y="133" width="72" height="30" rx="8" fill="#e0f2fe"/>
+      <text x="47" y="153" fill="#0f172a" font-family="Inter, Microsoft YaHei, Arial, sans-serif" font-size="13" font-weight="700">3</text>
+      <rect x="108" y="133" width="88" height="30" rx="8" fill="#eff6ff"/>
+      <text x="128" y="153" fill="#2563eb" font-family="Inter, Microsoft YaHei, Arial, sans-serif" font-size="13" font-weight="700">PNG</text>
+
+      <rect x="22" y="176" width="278" height="34" rx="10" fill="#2f6df6"/>
+      <text x="112" y="198" fill="#ffffff" font-family="Inter, Arial, sans-serif" font-size="13" font-weight="750">Export Keyframes</text>
+    </g>
+
+    <g transform="translate(22 292)">
+      <rect width="132" height="58" rx="12" fill="#eef6ff"/>
+      <rect x="12" y="12" width="42" height="34" rx="7" fill="#2f6df6" opacity="0.85"/>
+      <text x="66" y="27" fill="#0f172a" font-family="Inter, Microsoft YaHei, Arial, sans-serif" font-size="12" font-weight="750">Shot 001</text>
+      <text x="66" y="43" fill="#64748b" font-family="Inter, Arial, sans-serif" font-size="11">0-48 · 3 frames</text>
+    </g>
+    <g transform="translate(168 292)">
+      <rect width="132" height="58" rx="12" fill="#f8fafc"/>
+      <rect x="12" y="12" width="42" height="34" rx="7" fill="#38bdf8" opacity="0.85"/>
+      <text x="66" y="27" fill="#0f172a" font-family="Inter, Microsoft YaHei, Arial, sans-serif" font-size="12" font-weight="750">Shot 002</text>
+      <text x="66" y="43" fill="#64748b" font-family="Inter, Arial, sans-serif" font-size="11">49-92 · 2 frames</text>
+    </g>
+    <g transform="translate(314 292)">
+      <rect width="132" height="58" rx="12" fill="#f8fafc"/>
+      <rect x="12" y="12" width="42" height="34" rx="7" fill="#0ea5e9" opacity="0.85"/>
+      <text x="66" y="27" fill="#0f172a" font-family="Inter, Microsoft YaHei, Arial, sans-serif" font-size="12" font-weight="750">Shot 003</text>
+      <text x="66" y="43" fill="#64748b" font-family="Inter, Arial, sans-serif" font-size="11">93-148 · 3 frames</text>
+    </g>
+
+    <g transform="translate(510 300)">
+      <rect width="478" height="42" rx="12" fill="#f8fafc"/>
+      <text x="20" y="27" fill="#475569" font-family="Inter, Arial, sans-serif" font-size="13">Cache hit · metadata.json · auto folders · local-first processing</text>
+    </g>
+  </g>
+</svg>

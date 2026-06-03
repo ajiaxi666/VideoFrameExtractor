@@ -1,58 +1,114 @@
-# 视频镜头与关键帧提取工具
+# VideoFrameExtractor
 
-VideoFrameExtractor 是一个 Windows 本地桌面工具，用于从视频中检测镜头切换，并自动提取清晰、有代表性的关键帧。它适合用于 AIGC 训练数据集整理、素材库建立、镜头复查和图片提示词反推素材准备。
+<p align="center">
+  <img src="assets/readme-hero.svg" alt="VideoFrameExtractor preview" width="100%" />
+</p>
 
-## License
+<p align="center">
+  <a href="LICENSE"><img alt="License" src="https://img.shields.io/badge/license-GPLv3-2f6df6?style=flat-square"></a>
+  <img alt="Platform" src="https://img.shields.io/badge/platform-Windows-111827?style=flat-square">
+  <img alt="Python" src="https://img.shields.io/badge/python-3.10%2B-111827?style=flat-square">
+  <img alt="Qt" src="https://img.shields.io/badge/UI-PyQt5-111827?style=flat-square">
+</p>
 
-VideoFrameExtractor community edition is released under the GNU General Public License v3.0. See [LICENSE](LICENSE).
+<p align="center">
+  Windows 本地视频镜头检测与关键帧提取工具。把长视频、广告片、素材片快速拆成可复查、可导出、可缓存的关键帧素材。
+</p>
 
-Because this project uses PyQt5, GPLv3 is the intended license for the public community codebase. Third-party dependency notes are recorded in [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md).
+---
 
-## 当前能力
+## 它解决什么
 
-- 镜头检测：支持标准内容检测、自适应检测、直方图差异检测和混合增强模式。
-- 参数可调：用“切分灵敏度”滑块控制镜头切分密度，内部自动映射内容阈值、自适应阈值、差异阈值和最短镜头时长。
-- 运镜误切修正：可自动合并快速运镜造成的相似相邻镜头。
-- 弱切点过滤：默认混合模式会过滤只由轻微内容分数触发、缺少直方图支持的运动误切。
-- 参数配置：支持保存参数、导入/导出参数，并设置启动默认参数。
-- 关键帧选择：按清晰度、信息量、对比度、曝光和色彩综合评分。
-- 多关键帧：每个镜头可提取 1-6 张关键帧。
-- 缩略图视图：当前镜头首中尾帧独立展示，其它镜头关键帧以横向缩略图条浏览。
-- 手动微调：可在当前镜头范围内拖动帧滑块，逐帧前后移动，并替换当前关键帧。
-- 数据集导出：自动在选择的位置创建独立导出文件夹，保存无损 PNG 或有损 JPG 和 `metadata.json`。
-- 首中尾帧导出：支持导出当前镜头或全部镜头的首帧、中间帧和尾帧，文件名包含镜头号、顺序、帧号和时间码，按名称排序时首帧、中间帧、尾帧依次排列。
-- 拖拽导入：可把视频文件直接拖进窗口开始载入。
-- 检测缓存：检测完成后自动保存镜头与关键帧结果，下次导入同一视频会直接加载缓存。
-- 检测结果文件：支持手动保存/导入检测结果 JSON，便于迁移到其它电脑或备份项目。
-- 长视频优化：混合检测中的 Content/Adaptive 检测合并为单次解码，减少长片重复扫描。
-- 特征缓存：首次检测会保存每帧低分辨率特征，下次重新检测同一视频可直接复用特征，少做解码。
-- 缓存管理：支持清当前视频缓存、清全部缓存、打开缓存文件夹，以及清空当前结果释放缩略图占用。
-- 工作台界面：顶部显示当前视频上下文、版本和缓存状态，左侧是大预览、关键帧预览和底部镜头表格，右侧是参数与导出 inspector。
-- 可调参数栏：右侧参数区支持拖动调整宽度，基础参数常显，高级检测和选帧参数默认折叠。
-- 预览快捷跳转：当前镜头预览区支持一键跳到首帧、中间帧和尾帧，便于复查首中尾帧导出结果。
-- 桌面图标：Windows 便携版包含蓝白胶片关键帧图标，用于 EXE、窗口标题栏和任务栏。
-- 检测提速：v0.3.10 将镜头检测统一在 240px 分析帧和 5 帧采样步长上完成，并减少选帧阶段的无效取图，首轮大视频检测更快，二次导入仍可走缓存。
+做 AIGC 训练集、素材库或分镜复查时，最烦的不是截图，而是重复看视频、找镜头、挑清晰帧、避免误切、整理导出文件夹。
 
-## 安装
+VideoFrameExtractor 把这件事收敛成一个本地工作台：
 
-建议使用 Python 3.10 或更新版本。
+- 检测镜头切分，支持缓存，下次打开同一个视频不用重新跑。
+- 每个镜头自动挑选 1-6 张关键帧，也可以手动微调。
+- 预览当前镜头的首帧、中间帧、尾帧，支持一键导出。
+- 导出时自动建文件夹，附带 `metadata.json`，方便整理数据集。
+- 所有处理默认在本地完成，不依赖云端服务。
+
+## 30 秒开始
 
 ```bash
 pip install -r requirements.txt
-```
-
-## 启动
-
-```bash
 python main.py
 ```
 
 Windows 上也可以直接双击：
 
-- `setup_windows.cmd`：第一次在新电脑上运行，创建虚拟环境并安装依赖。
-- `run_app.cmd`：启动应用。
+```text
+setup_windows.cmd   # 首次安装依赖
+run_app.cmd         # 启动应用
+```
 
-## 打包
+## 工作流
+
+```text
+选择 / 拖入视频
+      ↓
+检测镜头并生成关键帧
+      ↓
+在大预览区复查镜头、拖动帧滑块、手动替换关键帧
+      ↓
+导出关键帧或导出当前 / 全部镜头首中尾帧
+      ↓
+获得图片文件夹 + metadata.json
+```
+
+## 核心能力
+
+| 能力 | 说明 |
+| --- | --- |
+| 镜头检测 | 支持标准内容检测、自适应检测、直方图差异检测和混合增强模式。 |
+| 参数滑块 | 用“切分灵敏度”和“运镜误切修正”控制检测倾向，减少直接调阈值的负担。 |
+| 关键帧选择 | 按清晰度、信息量、对比度、曝光和色彩综合评分。 |
+| 多帧输出 | 每个镜头可提取 1-6 张关键帧。 |
+| 首中尾帧 | 支持当前镜头或全部镜头的首帧、中间帧、尾帧导出。 |
+| 手动微调 | 镜头内滑块预览、上一帧/下一帧、设为当前关键帧。 |
+| 检测缓存 | 自动缓存镜头结果和低分辨率特征，二次导入更快。 |
+| 本地导出 | 自动创建独立导出文件夹，支持 PNG / JPG 和 `metadata.json`。 |
+
+## 适合谁
+
+- AIGC 训练数据集制作者
+- 视频创作者、剪辑师、素材整理者
+- 需要从广告片、短片、长片里快速提取代表性画面的人
+- 想把镜头检测结果保存下来，在不同电脑间迁移的人
+
+## 不适合什么
+
+- 不是剪辑软件，不提供时间线剪辑和转场编辑。
+- 不是云服务，不提供多人协作、云端转码或在线素材库。
+- 不再内置“分镜视频片段导出”，这个功能更适合交给专业剪辑软件。
+
+## 导出质量
+
+- `PNG` 是无损图片格式，适合训练集和高质量素材整理。
+- `JPG` 是有损格式，适合体积更小的预览或轻量归档。
+- 导出的图片来自 OpenCV 对视频帧的解码结果；不会对图片额外做美化、锐化或风格化处理。
+- 如果原视频是 HDR、杜比或特殊编码，最终效果取决于本机 OpenCV / FFmpeg 对该编码的解码能力。
+
+## 长视频与缓存
+
+- 检测过程按帧流式读取，不会把整部视频一次性载入内存。
+- 混合检测中的 Content / Adaptive 逻辑已经合并为单次解码，减少长片重复扫描。
+- 特征缓存只保存低分辨率分数与检测结果，不复制原视频。
+- 缓存可在应用内清理：清当前视频缓存、清全部缓存、打开缓存目录、清空当前结果。
+
+## 参数建议
+
+| 场景 | 建议 |
+| --- | --- |
+| 1 小时电影 | 优先用默认混合模式；只追求速度时可切到标准内容检测。 |
+| 快节奏广告 / 短视频 | 内容阈值 10-14，差异阈值 0.12-0.18。 |
+| 电影 / 长镜头素材 | 内容阈值 18-27，差异阈值 0.20-0.30。 |
+| 误切太多 | 提高差异阈值，或把最短镜头调到 0.5-1.0 秒。 |
+| 想识别更多镜头 | 使用混合增强，降低内容阈值和差异阈值。 |
+| 训练数据集 | 每镜头 2-3 帧通常比只取 1 帧更稳。 |
+
+## 打包 Windows 便携版
 
 在 Windows PowerShell 中运行：
 
@@ -73,46 +129,21 @@ release/VideoFrameExtractor-source.zip
 VideoFrameExtractor/VideoFrameExtractor.exe
 ```
 
-如果目标电脑无法直接运行 exe，可以使用源码包：
-
-1. 解压 `VideoFrameExtractor-source.zip`。
-2. 双击 `setup_windows.cmd` 安装依赖。
-3. 双击 `run_app.cmd` 启动。
-
-## 参数建议
-
-- 1 小时电影建议优先用默认混合模式；如果只追求速度，可以切到“标准内容检测”，会少跑补充检测但可能漏掉弱切点。
-- 杜比/HDR/几十 GB 原片主要风险不是文件大小，而是本机 OpenCV/FFmpeg 能否解码该编码格式；检测过程按帧流式读取，不会把整部视频载入内存。
-- 缓存只保存镜头结果和低分辨率特征，不复制原视频；如果 C 盘空间紧张，可在“缓存管理”里清理。
-- 想识别更多镜头：使用“混合增强”，降低“内容阈值”和“差异阈值”。
-- 误切太多：提高“差异阈值”，或把“最短镜头”调到 0.5-1.0 秒。
-- 快节奏广告/短视频：内容阈值 10-14，差异阈值 0.12-0.18。
-- 电影/长镜头素材：内容阈值 18-27，差异阈值 0.20-0.30。
-- 训练数据集：每镜头 2-3 帧通常比只取 1 帧更稳。
-
-## 贡献与安全
-
-- 贡献流程见 [CONTRIBUTING.md](CONTRIBUTING.md)。
-- 安全与隐私注意事项见 [SECURITY.md](SECURITY.md)。
-- 请不要把原视频、检测缓存、导出图片或私人项目文件提交到仓库。
-- 当前暂不接收未经过授权确认的外部代码贡献；提交 PR 前请先阅读贡献说明。
-
 ## 项目结构
 
 ```text
 video-frame-extractor/
 ├── assets/
 │   ├── app_icon.ico
-│   └── app_icon.png
+│   ├── app_icon.png
+│   └── readme-hero.svg
 ├── core/
-│   ├── __init__.py
 │   ├── feature_cache.py
 │   ├── frame_selector.py
 │   ├── image_saver.py
 │   ├── shot_detector.py
 │   └── video_processor.py
 ├── ui/
-│   ├── __init__.py
 │   └── main_window.py
 ├── main.py
 ├── requirements.txt
@@ -120,11 +151,21 @@ video-frame-extractor/
 ├── setup_windows.cmd
 ├── run_app.cmd
 ├── LICENSE
-├── README.md
-├── PRODUCT.md
-├── HANDOFF.md
 ├── CONTRIBUTING.md
 ├── SECURITY.md
-├── THIRD_PARTY_LICENSES.md
-└── OPEN_SOURCE_CHECKLIST.md
+└── THIRD_PARTY_LICENSES.md
 ```
+
+## 贡献与安全
+
+- 贡献流程见 [CONTRIBUTING.md](CONTRIBUTING.md)。
+- 安全与隐私注意事项见 [SECURITY.md](SECURITY.md)。
+- 第三方依赖说明见 [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md)。
+- 请不要把原视频、检测缓存、导出图片或私人项目文件提交到仓库。
+- 当前暂不接收未经过授权确认的外部代码贡献；提交 PR 前请先阅读贡献说明。
+
+## License
+
+VideoFrameExtractor community edition is released under the GNU General Public License v3.0. See [LICENSE](LICENSE).
+
+Because this project uses PyQt5, GPLv3 is the intended license for the public community codebase.
