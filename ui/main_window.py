@@ -45,7 +45,7 @@ from core.image_saver import ImageSaver
 from core.shot_detector import ShotDetector
 from core.video_processor import VideoProcessor
 
-APP_VERSION = "0.3.12"
+APP_VERSION = "0.3.13"
 
 
 def format_timecode(seconds: float) -> str:
@@ -740,11 +740,11 @@ class MainWindow(QMainWindow):
 
         edge_row = QHBoxLayout()
         edge_row.setSpacing(8)
-        self.export_current_edges_btn = QPushButton("???????")
+        self.export_current_edges_btn = QPushButton("????????")
         self.export_current_edges_btn.setProperty("secondary", "true")
         self.export_current_edges_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.export_current_edges_btn.clicked.connect(self.export_current_edge_frames)
-        self.export_all_edges_btn = QPushButton("???????")
+        self.export_all_edges_btn = QPushButton("????????")
         self.export_all_edges_btn.setProperty("secondary", "true")
         self.export_all_edges_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.export_all_edges_btn.clicked.connect(self.export_all_edge_frames)
@@ -1809,16 +1809,20 @@ class MainWindow(QMainWindow):
 
     def _edge_frame_indices(self, start: int, end: int):
         if end <= start:
-            return start, end
+            return start, start, end
         max_offset = max(0, (end - start - 1) // 2)
         offset = min(self.edge_frame_offset_spin.value(), max_offset)
-        return start + offset, end - offset
+        first_frame = start + offset
+        last_frame = end - offset
+        middle_frame = (first_frame + last_frame) // 2
+        return first_frame, middle_frame, last_frame
 
     def _edge_frame_filename(self, shot_idx: int, role: str, frame_idx: int, format_str: str) -> str:
         timecode = self._frame_timecode(frame_idx)
         ordered_role = {
             "start": "01_start",
-            "end": "02_end",
+            "middle": "02_middle",
+            "end": "03_end",
         }.get(role, role)
         return (
             f"frames/shot_{shot_idx + 1:03d}_{ordered_role}_"
@@ -1858,7 +1862,7 @@ class MainWindow(QMainWindow):
             return
 
         try:
-            output_dir = self._make_export_dir(parent_dir, "shot_edges")
+            output_dir = self._make_export_dir(parent_dir, "shot_frames")
             format_str = self.format_combo.currentData() or self.format_combo.currentText().lower()
             saver = ImageSaver(output_dir, format=format_str)
             exported_shots = []
@@ -1868,9 +1872,17 @@ class MainWindow(QMainWindow):
                 processor.open()
                 for shot_idx in shot_indices:
                     start, end = self.shots[shot_idx]
-                    first_frame, last_frame = self._edge_frame_indices(start, end)
+                    first_frame, middle_frame, last_frame = self._edge_frame_indices(start, end)
                     shot_files = []
-                    for role, frame_idx in (("start", first_frame), ("end", last_frame)):
+                    exported_frame_indices = set()
+                    for role, frame_idx in (
+                        ("start", first_frame),
+                        ("middle", middle_frame),
+                        ("end", last_frame),
+                    ):
+                        if frame_idx in exported_frame_indices:
+                            continue
+                        exported_frame_indices.add(frame_idx)
                         frame = processor.get_frame(frame_idx)
                         filename = self._edge_frame_filename(shot_idx, role, frame_idx, format_str)
                         filepath = saver.save_named_frame(
@@ -1895,6 +1907,7 @@ class MainWindow(QMainWindow):
                             "start_frame": start,
                             "end_frame": end,
                             "exported_start_frame": first_frame,
+                            "exported_middle_frame": middle_frame,
                             "exported_end_frame": last_frame,
                             "files": shot_files,
                         }
@@ -1905,7 +1918,7 @@ class MainWindow(QMainWindow):
             metadata = {
                 "app": "VideoFrameExtractor",
                 "version": APP_VERSION,
-                "export_type": "shot_edge_frames",
+                "export_type": "shot_anchor_frames",
                 "scope": scope,
                 "created_at": datetime.now().isoformat(timespec="seconds"),
                 "video_path": self.video_path,
@@ -1915,10 +1928,10 @@ class MainWindow(QMainWindow):
                 "shots": exported_shots,
             }
             saver.save_metadata(metadata)
-            self._set_path_status("???????", output_dir)
+            self._set_path_status("????????", output_dir)
         except Exception as exc:
-            self._set_status(f"???????: {exc}")
-            QMessageBox.warning(self, "???????", str(exc))
+            self._set_status(f"????????: {exc}")
+            QMessageBox.warning(self, "????????", str(exc))
 
     def export_dataset(self):
         if not self.selected_frames:
