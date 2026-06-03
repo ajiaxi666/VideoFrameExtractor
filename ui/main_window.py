@@ -45,7 +45,7 @@ from core.image_saver import ImageSaver
 from core.shot_detector import ShotDetector
 from core.video_processor import VideoProcessor
 
-APP_VERSION = "0.3.11"
+APP_VERSION = "0.3.12"
 
 
 def format_timecode(seconds: float) -> str:
@@ -1816,7 +1816,14 @@ class MainWindow(QMainWindow):
 
     def _edge_frame_filename(self, shot_idx: int, role: str, frame_idx: int, format_str: str) -> str:
         timecode = self._frame_timecode(frame_idx)
-        return f"frames/shot_{shot_idx + 1:03d}_{role}_f{frame_idx:06d}_t{timecode}.{format_str}"
+        ordered_role = {
+            "start": "01_start",
+            "end": "02_end",
+        }.get(role, role)
+        return (
+            f"frames/shot_{shot_idx + 1:03d}_{ordered_role}_"
+            f"f{frame_idx:06d}_t{timecode}.{format_str}"
+        )
 
     def _active_or_selected_shot_idx(self):
         if self.active_shot_idx is not None and self.active_shot_idx < len(self.shots):
