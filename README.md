@@ -2,11 +2,11 @@
 
 VideoFrameExtractor 是一个 Windows 本地桌面工具，用于从视频中检测镜头切换，并自动提取清晰、有代表性的关键帧。它适合用于 AIGC 训练数据集整理、素材库建立、镜头复查和图片提示词反推素材准备。
 
-## 许可证状态
+## License
 
-本仓库目前处于开源发布准备阶段，暂未选择最终开源许可证，仓库也暂不公开发布。正式公开前，请不要将本仓库视为已授权再分发的软件。
+VideoFrameExtractor community edition is released under the GNU General Public License v3.0. See [LICENSE](LICENSE).
 
-PyQt5 的授权选择会影响最终开源方案，相关第三方组件信息见 [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md)，公开前待办见 [OPEN_SOURCE_CHECKLIST.md](OPEN_SOURCE_CHECKLIST.md)。
+Because this project uses PyQt5, GPLv3 is the intended license for the public community codebase. Third-party dependency notes are recorded in [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md).
 
 ## 当前能力
 
@@ -95,6 +95,7 @@ VideoFrameExtractor/VideoFrameExtractor.exe
 - 贡献流程见 [CONTRIBUTING.md](CONTRIBUTING.md)。
 - 安全与隐私注意事项见 [SECURITY.md](SECURITY.md)。
 - 请不要把原视频、检测缓存、导出图片或私人项目文件提交到仓库。
+- 当前暂不接收未经过授权确认的外部代码贡献；提交 PR 前请先阅读贡献说明。
 
 ## 项目结构
 
@@ -118,6 +119,7 @@ video-frame-extractor/
 ├── build_portable.ps1
 ├── setup_windows.cmd
 ├── run_app.cmd
+├── LICENSE
 ├── README.md
 ├── PRODUCT.md
 ├── HANDOFF.md

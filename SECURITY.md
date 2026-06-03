@@ -18,7 +18,7 @@ Detection caches and exported images can reveal the content of a video project. 
 
 ## Reporting
 
-The repository is not publicly released yet. Report security or privacy issues through the maintainer channel used for this project.
+Report security or privacy issues through the maintainer channel used for this project. If the repository issue tracker is public, avoid posting private video details or sensitive file paths in public issues.
 
 When reporting, include:
 

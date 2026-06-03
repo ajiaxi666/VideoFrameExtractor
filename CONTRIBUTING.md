@@ -1,6 +1,10 @@
 # Contributing
 
-VideoFrameExtractor is currently in open-source preparation. The repository is not publicly released yet, and no final project license has been selected.
+VideoFrameExtractor community edition is licensed under GPLv3.
+
+The project is currently maintained as an author-led public codebase. External code contributions are not accepted automatically. Please discuss substantial changes before opening a pull request.
+
+If a future contribution needs to be used outside the GPLv3 community edition, the contributor must provide an additional written license grant or contributor agreement before that code can be merged.
 
 ## Setup
 
@@ -64,3 +68,9 @@ Please do not commit:
 - credentials or private configuration
 
 Keep changes focused. Avoid unrelated refactors when fixing a narrow bug.
+
+## Contribution Boundary
+
+By contributing to the public repository, you agree that your contribution may be distributed under GPLv3. Do not submit code copied from incompatible projects, private client work, or source that you cannot license.
+
+Pull requests that introduce unclear ownership, private media, generated cache data, or license ambiguity may be closed without merge.

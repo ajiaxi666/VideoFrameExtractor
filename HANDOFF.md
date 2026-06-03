@@ -28,7 +28,7 @@
 - UI 与桌面图标：v0.3.14 新增蓝白胶片关键帧桌面图标并接入 Windows 打包。
 - UI 重构：v0.3.15 按参考图重做 Windows 外壳，参数与导出移到右侧 inspector，左侧主工作区包含大预览、首中尾缩略图、其它关键帧条和底部镜头表格；主界面不再使用传统 `QGroupBox` 堆叠。
 - 产品上下文：`PRODUCT.md` 记录该工具的产品定位和设计原则，后续 UI 调整按“稳定、清楚、可靠”的产品工具方向推进。
-- 开源准备：暂不公开仓库、不创建 Release、不添加最终 `LICENSE` 文件；PyQt5 授权选择需要在正式公开前确认。
+- 开源状态：社区版采用 GPLv3；PyQt5 路线与 GPLv3 公开授权保持一致。当前不创建 GitHub Release。
 
 ## 本轮整理重点
 
@@ -37,9 +37,10 @@
 已完成：
 
 - 移除旧版用户体系占位方法和说明。
-- README 改为 Windows 本地工具说明，并加入当前授权状态。
+- README 改为 Windows 本地工具说明，并加入 GPLv3 授权状态。
 - HANDOFF 改为公开版交接文档，去掉本机绝对路径、内部样片路径和未采用的外部服务建议。
 - 新增 `THIRD_PARTY_LICENSES.md`、`CONTRIBUTING.md`、`SECURITY.md` 和 `OPEN_SOURCE_CHECKLIST.md`。
+- 新增 GPLv3 `LICENSE`，并在贡献说明中标明外部代码贡献边界。
 
 ## 主要模块
 
@@ -95,5 +96,5 @@ powershell -ExecutionPolicy Bypass -File .\build_portable.ps1
 1. 加批量处理多个视频。
 2. 增加相似帧去重，可用 perceptual hash 或 SSIM。
 3. 增加项目保存/打开，让检测结果和导出配置更容易迁移。
-4. 正式公开前完成 PyQt5 授权决策，或评估迁移到 PySide6。
-5. 正式公开前补最终 `LICENSE`、发布说明和公开截图。
+4. 补公开截图或短演示，使用非私有素材。
+5. 后续如需要非 GPL 公开授权，再评估迁移到 PySide6 或其它 UI 技术。
