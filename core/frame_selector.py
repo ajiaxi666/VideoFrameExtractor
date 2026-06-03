@@ -40,7 +40,7 @@ class FrameSelector:
         """Return a list of selected frame indices for every shot."""
         cap = cv2.VideoCapture(video_path)
         if not cap.isOpened():
-            raise ValueError(f"????????: {video_path}")
+            raise ValueError(f"无法打开视频文件: {video_path}")
 
         total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
         sample_sets = [self._sample_indices(start, end) for start, end in shots]
@@ -192,5 +192,5 @@ class FrameSelector:
         ret, frame = cap.read()
         cap.release()
         if not ret:
-            raise ValueError(f"????? {frame_idx} ?")
+            raise ValueError(f"无法读取第 {frame_idx} 帧")
         return frame

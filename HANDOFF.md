@@ -2,7 +2,7 @@
 
 ## 项目目标
 
-做一个本地桌面应用，从视频中智能提取高质量关键帧，作为 Stable Diffusion 等生成模型的训练数据集、素材库，也可用于反推图片提示词。
+做一个 Windows 本地桌面应用，从视频中智能提取高质量关键帧，作为生成模型训练数据集、素材库，也可用于反推图片提示词。
 
 ## 当前状态
 
@@ -10,7 +10,7 @@
 - 镜头检测：已升级为可调参数的多模式检测。
 - 默认模式：`hybrid`，合并 ContentDetector、AdaptiveDetector 和 OpenCV 直方图差异切点。
 - 相似镜头合并：默认启用温和的“运镜误切修正”，会合并边界前后很像且至少一侧较短的相邻镜头。
-- 弱运动误切过滤：v0.3.7 在混合模式下过滤只由弱 content/adaptive 分数触发、缺少直方图支持的切点，避免同一长镜头里的车身靠近、LOGO 叠加或构图变化被切开。
+- 弱运动误切过滤：v0.3.7 在混合模式下过滤只由弱 content/adaptive 分数触发、缺少直方图支持的切点，避免同一长镜头里的构图变化被切开。
 - 关键帧选择：支持每镜头多帧，按清晰度、信息量、对比度、曝光、色彩综合评分。
 - UI：v0.3.15 已重做为大预览工作区、关键帧缩略图区、底部镜头表格和右侧参数 inspector。
 - 参数配置：支持保存参数、导入/导出参数，并设置启动默认参数。
@@ -23,101 +23,77 @@
 - 长视频提速：`core/shot_detector.py` 将 ContentDetector 与 AdaptiveDetector 合并到同一次 OpenCV 解码循环，减少混合模式的重复全片扫描。
 - 特征缓存：`core/feature_cache.py` 将每帧 content score 和 histogram score 保存到 `%APPDATA%\VideoFrameExtractor\features`，同视频再次检测时可直接复算切点。
 - 缓存管理：UI 支持清当前视频缓存、清全部缓存、打开缓存文件夹、清空当前结果。
-- UI 稳定性：v0.3.6 固定左侧控制栏宽度，所有路径类状态使用短显示 + 完整 tooltip，避免保存参数、导出目录等长文本撑宽界面。
-- UI 优化：v0.3.8 增加顶部上下文栏，左侧改为文件、检测、关键帧、处理、导出、缓存、参数的工作流顺序，结果和预览区压缩信息层级。
-- UI 美化：v0.3.9 优化浅色产品工具视觉，增强 splitter 分隔条，并允许左侧参数栏在 300-540px 间拖动调整。
-- 性能优化：v0.3.10 将检测改为 240px 分析帧 + 5 帧采样步长，按采样步长校准阈值，移除默认混合检测里的重复全分辨率计算；相似镜头合并和切点精修改为顺序取帧，并把默认选帧候选数降到 24。
-- 功能收敛：v0.3.11 移除分镜视频片段导出、ffmpeg 依赖和相关 UI，产品重心回到关键帧、首尾帧和检测结果缓存。
-- 命名修正：v0.3.12 为首尾帧导出文件名增加 `01_start` / `02_end` 顺序前缀，避免 Windows 文件夹按名称排序时尾帧排在首帧前面。
+- 功能收敛：v0.3.11 移除分镜视频片段导出、ffmpeg 依赖和相关 UI，产品重心回到关键帧、首中尾帧和检测结果缓存。
 - 首中尾帧：v0.3.13 在首尾帧导出中加入 `02_middle` 中间帧，并将尾帧顺序更新为 `03_end`；极短镜头中重复帧会自动去重。
-- UI 与桌面图标：v0.3.14 将左侧参数栏收敛为基础参数 + 高级折叠，右侧预览增加首帧/中间帧/尾帧快捷跳转，新增蓝白胶片关键帧桌面图标并接入 Windows 打包。
+- UI 与桌面图标：v0.3.14 新增蓝白胶片关键帧桌面图标并接入 Windows 打包。
 - UI 重构：v0.3.15 按参考图重做 Windows 外壳，参数与导出移到右侧 inspector，左侧主工作区包含大预览、首中尾缩略图、其它关键帧条和底部镜头表格；主界面不再使用传统 `QGroupBox` 堆叠。
-- 产品上下文：新增 `PRODUCT.md`，记录该工具的产品定位和设计原则，后续 UI 调整按“稳定、清楚、可靠”的产品工具方向推进。
-- 商业化预留：UI 已加入账号与订阅入口，但尚未接入后端鉴权或支付。
+- 产品上下文：`PRODUCT.md` 记录该工具的产品定位和设计原则，后续 UI 调整按“稳定、清楚、可靠”的产品工具方向推进。
+- 开源准备：暂不公开仓库、不创建 Release、不添加最终 `LICENSE` 文件；PyQt5 授权选择需要在正式公开前确认。
 
-## 本轮优化重点
+## 本轮整理重点
 
-用户反馈：检测到的镜头数偏少，希望能识别更多镜头切换，并增加可调参数和优化 UI。
+本轮只做开源前整理，不改变检测算法、缓存格式、导出命名、图片质量逻辑或打包入口。
 
 已完成：
 
-- `core/shot_detector.py`
-  - 新增 `ShotDetectionSettings`。
-  - 新增 `mode`：`hybrid` / `content` / `adaptive` / `histogram`。
-  - 新增可调参数：`content_threshold`、`adaptive_threshold`、`histogram_threshold`、`min_scene_len_seconds`。
-  - 默认阈值更灵敏：内容阈值 12，自适应阈值 2.0，差异阈值 0.16，最短镜头 0.35 秒。
-  - ContentDetector 与 AdaptiveDetector 可在单次解码中并行处理，改善长视频检测速度。
-  - 检测时会收集并保存轻量特征；缓存命中后可跳过主检测解码，用特征分数重新计算切点。
-  - 新增弱运动误切过滤：强切点或有 histogram 支持的切点保留，弱 content 单点切点默认丢弃。
-- `core/feature_cache.py`
-  - 新增视频特征缓存，缓存键由文件名、大小和头/中/尾采样 hash 组成。
-  - 缓存文件为压缩 `.npz`，不会复制原视频。
+- 移除旧版用户体系占位方法和说明。
+- README 改为 Windows 本地工具说明，并加入当前授权状态。
+- HANDOFF 改为公开版交接文档，去掉本机绝对路径、内部样片路径和未采用的外部服务建议。
+- 新增 `THIRD_PARTY_LICENSES.md`、`CONTRIBUTING.md`、`SECURITY.md` 和 `OPEN_SOURCE_CHECKLIST.md`。
 
-- `core/frame_selector.py`
-  - 新增 `FrameSelectionSettings`。
-  - 支持每镜头多关键帧。
-  - 增加时间间隔约束，避免多张关键帧挤在同一瞬间。
-  - 评分加入色彩饱和度。
+## 主要模块
 
-- `ui/main_window.py`
-  - 参数面板重新组织。
-  - 增加切分灵敏度滑块和运镜误切修正滑块，隐藏繁琐阈值，保留每镜头帧数控制。
-  - 增加参数保存、导入、导出、设为默认。
-  - 增加关键帧缩略图网格。
-  - 增加当前镜头帧滑块、手动逐帧替换关键帧和键盘快捷键。
-  - 导出时自动创建 `{视频名}_keyframes_{时间}` 子文件夹。
-  - 增加当前/批量首中尾帧导出按钮。
-  - 增加基础/高级参数折叠、顶部缓存状态和预览区首/中/尾快捷跳转。
-  - 启动时加载 `assets/app_icon.ico`，源码运行和 PyInstaller 打包都使用同一套桌面图标。
-  - v0.3.15 将镜头列表迁移为 `QTableWidget`，并把当前镜头首中尾缩略图与其它镜头关键帧缩略图拆开显示。
-  - 增加拖拽导入视频、检测结果自动缓存加载、检测结果 JSON 保存/导入。
-  - 增加缓存管理面板：缓存大小、清当前视频缓存、清全部缓存、打开缓存文件夹、清空当前结果。
-  - 固定左侧栏宽度，关闭横向滚动，状态栏长路径自动省略并用 tooltip 保留完整内容。
-  - 增加账号/注册/订阅入口占位。
+- `main.py`：应用入口，创建 `QApplication` 和主窗口。
+- `ui/main_window.py`：主界面、参数面板、拖拽导入、缓存管理、预览微调、导出动作。
+- `core/shot_detector.py`：镜头检测与切点合并逻辑。
+- `core/feature_cache.py`：低分辨率特征缓存。
+- `core/frame_selector.py`：关键帧评分和多帧选择。
+- `core/image_saver.py`：关键帧和首中尾帧图片导出。
+- `core/video_processor.py`：视频信息读取、帧读取和缩略图支持。
 
-## 实测结果
+## 验证记录
 
-在 `D:\AIGC\拉片切片\新建文件夹\jlyzw0zn3MoQB198_1080p.mp4` 上：
+历史验证使用内部样片完成，公开文档不保留样片路径。
 
-- 旧逻辑：`ContentDetector threshold=20` 检测 172 个镜头。
-- 新默认混合模式：检测 209 个镜头。
+- 长样片：旧逻辑检测 172 个镜头，新默认混合模式检测 209 个镜头。
+- 短样片：旧逻辑检测 17 个镜头，新默认混合模式检测 31 个镜头。
+- 打包验证：`release/VideoFrameExtractor-portable.zip` 解压后运行 `VideoFrameExtractor\VideoFrameExtractor.exe`，可启动并保持运行 5 秒以上。
 
-在另一个短样片上：
+## 启动方式
 
-- 旧逻辑：17 个镜头。
-- 新默认混合模式：31 个镜头。
+源码运行：
 
-## 打包产物
+```cmd
+python main.py
+```
 
-已生成：
-
-- `release\VideoFrameExtractor-portable.zip`
-  - 约 93 MB。
-  - 解压后运行 `VideoFrameExtractor\VideoFrameExtractor.exe`。
-  - 已验证：从 zip 解压到临时目录后，exe 能启动并保持运行 5 秒以上。
-
-- `release\VideoFrameExtractor-source.zip`
-  - 源码续跑包。
-  - 新电脑上先运行 `setup_windows.cmd`，再运行 `run_app.cmd`。
-
-当前源码目录也可直接运行：
+Windows 快捷脚本：
 
 ```cmd
 run_app.cmd
 ```
 
-## 启动方式
+首次在新电脑运行源码包：
 
 ```cmd
-cd C:\Users\Administrator\.claude\video-frame-extractor
-python main.py
+setup_windows.cmd
 ```
+
+## 打包方式
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\build_portable.ps1
+```
+
+预期产物：
+
+- `release\VideoFrameExtractor-portable.zip`
+- `release\VideoFrameExtractor-source.zip`
 
 ## 后续建议
 
 1. 加批量处理多个视频。
 2. 增加相似帧去重，可用 perceptual hash 或 SSIM。
-3. 增加项目保存/打开，避免每次重新检测。
-4. 登录订阅建议接入 FastAPI + PostgreSQL/Supabase/Auth.js 任一后端方案。
-5. 订阅支付可先按目标市场选择 Stripe、微信支付、支付宝或 Paddle。
-6. 如果要做订阅制桌面软件，需要增加授权校验、离线宽限期、套餐额度和导出水印/限制策略。
+3. 增加项目保存/打开，让检测结果和导出配置更容易迁移。
+4. 正式公开前完成 PyQt5 授权决策，或评估迁移到 PySide6。
+5. 正式公开前补最终 `LICENSE`、发布说明和公开截图。

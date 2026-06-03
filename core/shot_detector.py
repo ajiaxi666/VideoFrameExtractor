@@ -320,7 +320,7 @@ class ShotDetector:
     def _probe_video(self, video_path: str) -> Tuple[int, float]:
         cap = cv2.VideoCapture(video_path)
         if not cap.isOpened():
-            raise ValueError(f"????????: {video_path}")
+            raise ValueError(f"无法打开视频文件: {video_path}")
         total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
         fps = float(cap.get(cv2.CAP_PROP_FPS) or 25.0)
         cap.release()
@@ -345,7 +345,7 @@ class ShotDetector:
         """Collect low-resolution frame-difference features without retrieving every 4K frame."""
         cap = cv2.VideoCapture(video_path)
         if not cap.isOpened():
-            raise ValueError(f"????????: {video_path}")
+            raise ValueError(f"无法打开视频文件: {video_path}")
 
         step = max(1, int(self.settings.analysis_frame_step))
         content_scores = np.zeros(total_frames, dtype=np.float32)
@@ -411,7 +411,7 @@ class ShotDetector:
         """Run multiple PySceneDetect detectors in a single decode pass."""
         cap = cv2.VideoCapture(video_path)
         if not cap.isOpened():
-            raise ValueError(f"????????????: {video_path}")
+            raise ValueError(f"鏃犳硶鎵撳紑瑙嗛鏂囦欢: {video_path}")
 
         results = {name: [] for name, _detector in detectors}
         content_scores = np.zeros(total_frames, dtype=np.float32)
@@ -647,7 +647,7 @@ class ShotDetector:
     ) -> List[int]:
         cap = cv2.VideoCapture(video_path)
         if not cap.isOpened():
-            raise ValueError(f"????????: {video_path}")
+            raise ValueError(f"无法打开视频文件: {video_path}")
 
         cuts: List[int] = []
         previous_hist = None

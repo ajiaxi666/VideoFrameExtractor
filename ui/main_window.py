@@ -2551,13 +2551,6 @@ class MainWindow(QMainWindow):
             self._set_status(f"导出失败: {exc}")
             QMessageBox.warning(self, "导出失败", str(exc))
 
-    def show_account_placeholder(self):
-        QMessageBox.information(
-            self,
-            "账号与订阅",
-            "账号、注册和订阅入口已经预留在界面中。下一步可以接入后端鉴权、套餐权限和支付回调。",
-        )
-
     def _first_selected_frame(self):
         for frames in self.selected_frames:
             if frames:

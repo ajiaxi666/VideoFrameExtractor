@@ -1,6 +1,12 @@
 # 视频镜头与关键帧提取工具
 
-一个本地桌面应用，用于从视频中检测镜头切换，并自动提取清晰、有代表性的关键帧，适合作为生成模型训练数据集、素材库或提示词反推素材。
+VideoFrameExtractor 是一个 Windows 本地桌面工具，用于从视频中检测镜头切换，并自动提取清晰、有代表性的关键帧。它适合用于 AIGC 训练数据集整理、素材库建立、镜头复查和图片提示词反推素材准备。
+
+## 许可证状态
+
+本仓库目前处于开源发布准备阶段，暂未选择最终开源许可证，仓库也暂不公开发布。正式公开前，请不要将本仓库视为已授权再分发的软件。
+
+PyQt5 的授权选择会影响最终开源方案，相关第三方组件信息见 [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md)，公开前待办见 [OPEN_SOURCE_CHECKLIST.md](OPEN_SOURCE_CHECKLIST.md)。
 
 ## 当前能力
 
@@ -15,14 +21,12 @@
 - 手动微调：可在当前镜头范围内拖动帧滑块，逐帧前后移动，并替换当前关键帧。
 - 数据集导出：自动在选择的位置创建独立导出文件夹，保存无损 PNG 或有损 JPG 和 `metadata.json`。
 - 首中尾帧导出：支持导出当前镜头或全部镜头的首帧、中间帧和尾帧，文件名包含镜头号、顺序、帧号和时间码，按名称排序时首帧、中间帧、尾帧依次排列。
-- 账号订阅入口：UI 已预留登录、注册、订阅按钮，后续可接后端和支付。
 - 拖拽导入：可把视频文件直接拖进窗口开始载入。
 - 检测缓存：检测完成后自动保存镜头与关键帧结果，下次导入同一视频会直接加载缓存。
 - 检测结果文件：支持手动保存/导入检测结果 JSON，便于迁移到其它电脑或备份项目。
 - 长视频优化：混合检测中的 Content/Adaptive 检测合并为单次解码，减少长片重复扫描。
 - 特征缓存：首次检测会保存每帧低分辨率特征，下次重新检测同一视频可直接复用特征，少做解码。
 - 缓存管理：支持清当前视频缓存、清全部缓存、打开缓存文件夹，以及清空当前结果释放缩略图占用。
-- 界面稳定性：状态栏里的长路径会自动省略并保留完整悬停提示，保存参数或导出后不会撑宽参数面板。
 - 工作台界面：顶部显示当前视频上下文、版本和缓存状态，左侧是大预览、关键帧预览和底部镜头表格，右侧是参数与导出 inspector。
 - 可调参数栏：右侧参数区支持拖动调整宽度，基础参数常显，高级检测和选帧参数默认折叠。
 - 预览快捷跳转：当前镜头预览区支持一键跳到首帧、中间帧和尾帧，便于复查首中尾帧导出结果。
@@ -30,6 +34,8 @@
 - 检测提速：v0.3.10 将镜头检测统一在 240px 分析帧和 5 帧采样步长上完成，并减少选帧阶段的无效取图，首轮大视频检测更快，二次导入仍可走缓存。
 
 ## 安装
+
+建议使用 Python 3.10 或更新版本。
 
 ```bash
 pip install -r requirements.txt
@@ -67,7 +73,7 @@ release/VideoFrameExtractor-source.zip
 VideoFrameExtractor/VideoFrameExtractor.exe
 ```
 
-如果公司电脑无法直接运行 exe，就使用源码包：
+如果目标电脑无法直接运行 exe，可以使用源码包：
 
 1. 解压 `VideoFrameExtractor-source.zip`。
 2. 双击 `setup_windows.cmd` 安装依赖。
@@ -84,23 +90,39 @@ VideoFrameExtractor/VideoFrameExtractor.exe
 - 电影/长镜头素材：内容阈值 18-27，差异阈值 0.20-0.30。
 - 训练数据集：每镜头 2-3 帧通常比只取 1 帧更稳。
 
+## 贡献与安全
+
+- 贡献流程见 [CONTRIBUTING.md](CONTRIBUTING.md)。
+- 安全与隐私注意事项见 [SECURITY.md](SECURITY.md)。
+- 请不要把原视频、检测缓存、导出图片或私人项目文件提交到仓库。
+
 ## 项目结构
 
 ```text
 video-frame-extractor/
-├── main.py
-├── requirements.txt
-├── README.md
-├── HANDOFF.md
-├── PRODUCT.md
+├── assets/
+│   ├── app_icon.ico
+│   └── app_icon.png
+├── core/
+│   ├── __init__.py
+│   ├── feature_cache.py
+│   ├── frame_selector.py
+│   ├── image_saver.py
+│   ├── shot_detector.py
+│   └── video_processor.py
 ├── ui/
 │   ├── __init__.py
 │   └── main_window.py
-└── core/
-    ├── __init__.py
-    ├── feature_cache.py
-    ├── video_processor.py
-    ├── shot_detector.py
-    ├── frame_selector.py
-    ├── image_saver.py
+├── main.py
+├── requirements.txt
+├── build_portable.ps1
+├── setup_windows.cmd
+├── run_app.cmd
+├── README.md
+├── PRODUCT.md
+├── HANDOFF.md
+├── CONTRIBUTING.md
+├── SECURITY.md
+├── THIRD_PARTY_LICENSES.md
+└── OPEN_SOURCE_CHECKLIST.md
 ```
