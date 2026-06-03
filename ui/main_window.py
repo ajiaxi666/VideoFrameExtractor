@@ -43,10 +43,28 @@ from core.frame_selector import FrameSelector
 from core.feature_cache import feature_cache_path
 from core.image_saver import ImageSaver
 from core.shot_detector import ShotDetector
-from core.video_exporter import VideoSegmentExporter, ffmpeg_executable, format_timecode
 from core.video_processor import VideoProcessor
 
-APP_VERSION = "0.3.10"
+APP_VERSION = "0.3.11"
+
+
+def format_timecode(seconds: float) -> str:
+    seconds = max(0.0, float(seconds))
+    hours = int(seconds // 3600)
+    minutes = int((seconds % 3600) // 60)
+    secs = seconds % 60
+    whole_secs = int(secs)
+    millis = int(round((secs - whole_secs) * 1000))
+    if millis >= 1000:
+        whole_secs += 1
+        millis -= 1000
+    if whole_secs >= 60:
+        minutes += 1
+        whole_secs -= 60
+    if minutes >= 60:
+        hours += 1
+        minutes -= 60
+    return f"{hours:02d}-{minutes:02d}-{whole_secs:02d}.{millis:03d}"
 
 
 class ProcessingThread(QThread):
@@ -107,34 +125,6 @@ class ProcessingThread(QThread):
             self.error.emit(str(exc))
 
 
-class VideoExportThread(QThread):
-    """Export shot videos away from the UI thread."""
-
-    progress = pyqtSignal(int)
-    finished = pyqtSignal(dict)
-    error = pyqtSignal(str)
-
-    def __init__(self, video_path: str, shots: list, output_dir: str, mode: str):
-        super().__init__()
-        self.video_path = video_path
-        self.shots = shots
-        self.output_dir = output_dir
-        self.mode = mode
-
-    def run(self):
-        try:
-            exporter = VideoSegmentExporter(self.video_path, self.output_dir)
-            metadata = exporter.export_segments(
-                self.shots,
-                mode=self.mode,
-                progress_callback=lambda p: self.progress.emit(p),
-            )
-            self.progress.emit(100)
-            self.finished.emit(metadata)
-        except Exception as exc:
-            self.error.emit(str(exc))
-
-
 class MainWindow(QMainWindow):
     """Main application window."""
 
@@ -152,7 +142,6 @@ class MainWindow(QMainWindow):
         self.active_keyframe_idx = None
         self.current_frame_idx = None
         self.thread = None
-        self.export_thread = None
         self.last_metrics = {}
         self.shortcuts = []
 
@@ -762,19 +751,6 @@ class MainWindow(QMainWindow):
         edge_row.addWidget(self.export_current_edges_btn, 1)
         edge_row.addWidget(self.export_all_edges_btn, 1)
         layout.addLayout(edge_row)
-
-        video_row = QHBoxLayout()
-        video_row.addWidget(QLabel("??"))
-        self.video_mode_combo = QComboBox()
-        self.video_mode_combo.addItem("?????????", "precise")
-        self.video_mode_combo.addItem("??????????", "copy")
-        video_row.addWidget(self.video_mode_combo)
-        layout.addLayout(video_row)
-
-        self.export_segments_btn = QPushButton("??????")
-        self.export_segments_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        self.export_segments_btn.clicked.connect(self.export_shot_videos)
-        layout.addWidget(self.export_segments_btn)
 
         project_row = QHBoxLayout()
         project_row.setSpacing(8)
@@ -1442,7 +1418,6 @@ class MainWindow(QMainWindow):
                 "edge_margin_ratio": self.edge_margin_spin.value() / 100.0,
                 "edge_frame_offset": self.edge_frame_offset_spin.value(),
                 "format": self.format_combo.currentData(),
-                "video_export_mode": self.video_mode_combo.currentData(),
                 "detection": self._detection_settings(),
                 "selection": self._selection_settings(),
             },
@@ -1497,12 +1472,6 @@ class MainWindow(QMainWindow):
             fmt_index = self.format_combo.findData(fmt)
             if fmt_index >= 0:
                 self.format_combo.setCurrentIndex(fmt_index)
-
-        video_mode = settings.get("video_export_mode")
-        if video_mode is not None:
-            video_mode_index = self.video_mode_combo.findData(video_mode)
-            if video_mode_index >= 0:
-                self.video_mode_combo.setCurrentIndex(video_mode_index)
 
     def _load_default_config(self):
         path = self._default_config_path()
@@ -1993,74 +1962,6 @@ class MainWindow(QMainWindow):
         except Exception as exc:
             self._set_status(f"????: {exc}")
             QMessageBox.warning(self, "????", str(exc))
-
-    def export_shot_videos(self):
-        if not self.video_path or not self.shots:
-            self._set_status("??????")
-            return
-        if self.export_thread is not None and self.export_thread.isRunning():
-            self._set_status("????????")
-            return
-
-        parent_dir = QFileDialog.getExistingDirectory(self, "??????")
-        if not parent_dir:
-            return
-
-        output_dir = self._make_export_dir(parent_dir, "shot_videos")
-        mode = self.video_mode_combo.currentData() or "precise"
-        self._last_video_output_dir = output_dir
-        self.progress_bar.setValue(0)
-        self._set_video_export_running(True)
-
-        if mode == "copy" and not ffmpeg_executable():
-            self._set_status("??? ffmpeg?????????????")
-        else:
-            self._set_status("????????...")
-
-        self.export_thread = VideoExportThread(
-            self.video_path,
-            list(self.shots),
-            output_dir,
-            mode,
-        )
-        self.export_thread.progress.connect(self.progress_bar.setValue)
-        self.export_thread.finished.connect(self.on_video_export_finished)
-        self.export_thread.error.connect(self.on_video_export_error)
-        self.export_thread.start()
-
-    def _set_video_export_running(self, running: bool):
-        enabled = not running
-        self.process_btn.setEnabled(enabled)
-        if hasattr(self, "export_current_edges_btn"):
-            self.export_current_edges_btn.setEnabled(enabled)
-        if hasattr(self, "export_all_edges_btn"):
-            self.export_all_edges_btn.setEnabled(enabled)
-        if hasattr(self, "export_segments_btn"):
-            self.export_segments_btn.setEnabled(enabled)
-        if hasattr(self, "save_project_btn"):
-            self.save_project_btn.setEnabled(enabled)
-        if hasattr(self, "import_project_btn"):
-            self.import_project_btn.setEnabled(enabled)
-
-    def on_video_export_finished(self, metadata: dict):
-        self._set_video_export_running(False)
-        self.export_thread = None
-        output_dir = getattr(self, "_last_video_output_dir", "")
-        count = metadata.get("total_shots", 0)
-        actual_mode = metadata.get("actual_mode", "")
-        if actual_mode == "opencv_reencode":
-            mode_text = "?????"
-        elif actual_mode == "copy":
-            mode_text = "????"
-        else:
-            mode_text = "??????"
-        self._set_path_status(f"??????? {count} ??{mode_text}??", output_dir)
-
-    def on_video_export_error(self, error_msg: str):
-        self._set_video_export_running(False)
-        self.export_thread = None
-        self._set_status(f"????????: {error_msg}")
-        QMessageBox.warning(self, "????????", error_msg)
 
     def show_account_placeholder(self):
         QMessageBox.information(
