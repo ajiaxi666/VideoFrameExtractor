@@ -29,19 +29,37 @@ VideoFrameExtractor 把这件事收敛成一个本地工作台：
 - 导出时自动建文件夹，附带 `metadata.json`，方便整理数据集。
 - 所有处理默认在本地完成，不依赖云端服务。
 
-## 30 秒开始
+## 下载
 
-```bash
-pip install -r requirements.txt
-python main.py
-```
-
-Windows 上也可以直接双击：
+最省事的方式是下载 Windows 便携包：
 
 ```text
-setup_windows.cmd   # 首次安装依赖
-run_app.cmd         # 启动应用
+https://github.com/ajiaxi666/VideoFrameExtractor/releases/latest
 ```
+
+下载 `VideoFrameExtractor-portable.zip` 后解压，双击：
+
+```text
+VideoFrameExtractor/VideoFrameExtractor.exe
+```
+
+如果没有看到 Release 包，也可以下载源码运行或自己打包，见下面两节。
+
+## 30 秒开始：源码运行
+
+```powershell
+git clone https://github.com/ajiaxi666/VideoFrameExtractor.git
+cd VideoFrameExtractor
+.\setup_windows.cmd
+.\run_app.cmd
+```
+
+如果是从 GitHub 下载 ZIP：
+
+1. 点 GitHub 页面右上角 `Code` -> `Download ZIP`。
+2. 解压 ZIP。
+3. 进入解压后的 `VideoFrameExtractor-main` 文件夹。
+4. 双击 `setup_windows.cmd`，安装完成后双击 `run_app.cmd`。
 
 ## 工作流
 
@@ -110,11 +128,14 @@ run_app.cmd         # 启动应用
 
 ## 打包 Windows 便携版
 
-在 Windows PowerShell 中运行：
+先进入项目根目录，也就是能看到 `build_portable.ps1` 的文件夹，再运行：
 
 ```powershell
+cd path\to\VideoFrameExtractor
 powershell -ExecutionPolicy Bypass -File .\build_portable.ps1
 ```
+
+如果报错说 `.\build_portable.ps1` 不存在，说明当前 PowerShell 目录不在项目文件夹里。先用 `cd` 进入解压后的项目目录，或者把脚本完整路径传给 `-File`。
 
 生成结果：
 

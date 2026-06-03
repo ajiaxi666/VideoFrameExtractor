@@ -39,12 +39,15 @@ Copy-Item -LiteralPath "dist\VideoFrameExtractor" -Destination (Join-Path $Packa
 Copy-Item -LiteralPath "README.md" -Destination $PackageRoot
 Copy-Item -LiteralPath "HANDOFF.md" -Destination $PackageRoot
 Copy-Item -LiteralPath "PRODUCT.md" -Destination $PackageRoot
+Copy-Item -LiteralPath "LICENSE" -Destination $PackageRoot
+Copy-Item -LiteralPath "THIRD_PARTY_LICENSES.md" -Destination $PackageRoot
+Copy-Item -LiteralPath "SECURITY.md" -Destination $PackageRoot
 
 $ZipPath = Join-Path $Root "release\VideoFrameExtractor-portable.zip"
 if (Test-Path $ZipPath) {
     Remove-Item -LiteralPath $ZipPath -Force
 }
-Compress-Archive -Path (Join-Path $PackageRoot "VideoFrameExtractor"), (Join-Path $PackageRoot "README.md"), (Join-Path $PackageRoot "HANDOFF.md"), (Join-Path $PackageRoot "PRODUCT.md") -DestinationPath $ZipPath
+Compress-Archive -Path (Join-Path $PackageRoot "VideoFrameExtractor"), (Join-Path $PackageRoot "README.md"), (Join-Path $PackageRoot "HANDOFF.md"), (Join-Path $PackageRoot "PRODUCT.md"), (Join-Path $PackageRoot "LICENSE"), (Join-Path $PackageRoot "THIRD_PARTY_LICENSES.md"), (Join-Path $PackageRoot "SECURITY.md") -DestinationPath $ZipPath
 
 $SourceStage = Join-Path $PackageRoot "VideoFrameExtractor-source"
 if (Test-Path $SourceStage) {
@@ -59,6 +62,11 @@ Copy-Item -LiteralPath "requirements.txt" -Destination $SourceStage
 Copy-Item -LiteralPath "README.md" -Destination $SourceStage
 Copy-Item -LiteralPath "HANDOFF.md" -Destination $SourceStage
 Copy-Item -LiteralPath "PRODUCT.md" -Destination $SourceStage
+Copy-Item -LiteralPath "LICENSE" -Destination $SourceStage
+Copy-Item -LiteralPath "CONTRIBUTING.md" -Destination $SourceStage
+Copy-Item -LiteralPath "SECURITY.md" -Destination $SourceStage
+Copy-Item -LiteralPath "THIRD_PARTY_LICENSES.md" -Destination $SourceStage
+Copy-Item -LiteralPath "OPEN_SOURCE_CHECKLIST.md" -Destination $SourceStage
 Copy-Item -LiteralPath "setup_windows.cmd" -Destination $SourceStage
 Copy-Item -LiteralPath "run_app.cmd" -Destination $SourceStage
 Copy-Item -LiteralPath "build_portable.ps1" -Destination $SourceStage
